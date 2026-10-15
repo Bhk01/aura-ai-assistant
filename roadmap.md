@@ -1,0 +1,12 @@
+# S-IT Hub
+- [ ] Phase 0: design foundation, welcome animation, Hub, gallery and visual checks (current approval).
+- [ ] Phase 1: offline demo data — awaiting phase 0 approval.
+- [ ] Phase 2: shell, PIN and Today workflows — awaiting preceding approval.
+- [ ] Phase 3: lists and details — awaiting preceding approval.
+- [ ] Phase 4: Android — requires Android setup and device.
+- [ ] Phase 5: repair workflow and PDFs — requires real forms for final layouts.
+- [ ] Phase 6: alerts — awaiting preceding approval.
+- [ ] Phase 7: scanner — requires Android and OCR service for native verification.
+- [ ] Phase 8: real Hub thinking and voice — requires Cloud/AI setup and preceding approval.
+- [ ] Phase 9: accounts and sync — awaiting preceding approval.
+- [ ] Phase 10: final review and guide — awaiting preceding approval.
