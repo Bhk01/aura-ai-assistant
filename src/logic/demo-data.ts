@@ -3,7 +3,7 @@ import { addBusinessDays } from './rules';
 export type DeviceType = 'printer' | 'monitor' | 'pc';
 export type Department = { id: string; fr: string; en: string; ar: string; critical: boolean };
 export type Company = { id: string; name: string; phone: string; deadlineDays: number; contract: 'warranty' | 'contract' | 'none'; contractEnd: string };
-export type Device = { id: string; inventory: string; serial: string; type: DeviceType; brand: string; departmentId: string; status: 'service' | 'away'; companyId?: string; sentDate?: string; problem?: string; returnedDate?: string };
+export type Device = { id: string; inventory: string; serial: string; type: DeviceType; brand: string; departmentId: string; status: 'service' | 'away'; companyId?: string; sentDate?: string; problem?: string; returnedDate?: string | undefined };
 export type Paper = { id: string; kind: 'dispatch' | 'reception' | 'invoice'; deviceId: string; companyId: string; date: string };
 
 export const departments: Department[] = [
@@ -27,9 +27,9 @@ export function createDemoData(today = new Date()) {
   ];
   const types: [DeviceType, string][] = [['pc', 'Dell OptiPlex'], ['printer', 'HP LaserJet'], ['monitor', 'Dell 24″'], ['pc', 'Lenovo ThinkCentre'], ['printer', 'Canon i-SENSYS']];
   const devices: Device[] = Array.from({ length: 40 }, (_, i) => {
-    const [type, brand] = types[i % types.length];
+    const [type, brand] = types[i % types.length]!;
     const n = String(100 + i * 7).padStart(4, '0');
-    return { id: `d${i}`, inventory: `INV-${n}`, serial: `DEMO-SN-${n}`, type, brand, departmentId: departments[i % 6].id, status: 'service' };
+    return { id: `d${i}`, inventory: `INV-${n}`, serial: `DEMO-SN-${n}`, type, brand, departmentId: departments[i % 6]!.id, status: 'service' };
   });
   // Away devices: sent so that expected return lands relative to today (negative = late by N business days).
   const away: { inv: string; type: DeviceType; brand: string; dep: string; company: string; offset: number; problem: string }[] = [
@@ -43,11 +43,11 @@ export function createDemoData(today = new Date()) {
     const company = companies.find(c => c.id === a.company)!;
     const expected = addBusinessDays(today, a.offset);
     const sent = addBusinessDays(expected, -company.deadlineDays);
-    devices[i] = { ...devices[i], inventory: a.inv, serial: `DEMO-SN-${a.inv.slice(4)}`, type: a.type, brand: a.brand, departmentId: a.dep, status: 'away', companyId: a.company, sentDate: iso(sent), problem: a.problem };
+    devices[i] = { ...devices[i]!, id: `d${i}`, inventory: a.inv, serial: `DEMO-SN-${a.inv.slice(4)}`, type: a.type, brand: a.brand, departmentId: a.dep, status: 'away', companyId: a.company, sentDate: iso(sent), problem: a.problem };
   });
   const papers: Paper[] = [
-    { id: 'p1', kind: 'dispatch', deviceId: 'd0', companyId: 'nimbus', date: devices[0].sentDate! },
-    { id: 'p2', kind: 'dispatch', deviceId: 'd1', companyId: 'zenith', date: devices[1].sentDate! },
+    { id: 'p1', kind: 'dispatch', deviceId: 'd0', companyId: 'nimbus', date: devices[0]!.sentDate! },
+    { id: 'p2', kind: 'dispatch', deviceId: 'd1', companyId: 'zenith', date: devices[1]!.sentDate! },
     { id: 'p3', kind: 'reception', deviceId: 'd7', companyId: 'atlas', date: iso(addBusinessDays(today, -4)) },
   ];
   return { companies, devices, papers };

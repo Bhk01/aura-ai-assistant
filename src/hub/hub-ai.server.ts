@@ -35,7 +35,7 @@ function runIdFetch(initial?: string | null) {
 }
 
 export async function handleHubChat(request: Request) {
-  const apiKey = process.env.LOVABLE_API_KEY;
+  const apiKey = process.env['LOVABLE_API_KEY'];
   if (!apiKey) return Response.json({ error: 'AI is not configured.' }, { status: 401 });
   const parsed = ChatBody.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return Response.json({ error: 'Invalid request.' }, { status: 400 });
@@ -71,7 +71,7 @@ export async function handleHubChat(request: Request) {
 }
 
 export async function handleHubSpeech(request: Request) {
-  const apiKey = process.env.LOVABLE_API_KEY;
+  const apiKey = process.env['LOVABLE_API_KEY'];
   if (!apiKey) return Response.json({ error: 'AI is not configured.' }, { status: 401 });
   const parsed = z.object({ text: z.string().min(1).max(1500) }).safeParse(await request.json().catch(() => null));
   if (!parsed.success) return Response.json({ error: 'Invalid request.' }, { status: 400 });
