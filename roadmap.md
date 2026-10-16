@@ -1,5 +1,5 @@
 # S-IT Hub
-- [ ] Phase 0: design foundation, welcome animation, Hub, gallery and visual checks (current approval).
+- [x] Phase 0: design foundation, welcome animation, Hub, gallery and visual checks — checked on phone size; awaiting your approval.
 - [ ] Phase 1: offline demo data — awaiting phase 0 approval.
 - [ ] Phase 2: shell, PIN and Today workflows — awaiting preceding approval.
 - [ ] Phase 3: lists and details — awaiting preceding approval.
