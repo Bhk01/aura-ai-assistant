@@ -1,4 +1,5 @@
 # S-IT Hub
+- [ ] Current review: correct early reminders, duplicate device content, misleading Hub guide and workflow labels; verify design and assistant boundaries.
 - [x] Phase 0: design foundation, welcome animation, Hub, gallery and visual checks — checked on phone size; awaiting your approval.
 - [ ] Phase 1: offline demo data — awaiting phase 0 approval.
 - [ ] Phase 2: shell, PIN and Today workflows — awaiting preceding approval.
