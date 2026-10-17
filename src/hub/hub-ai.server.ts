@@ -7,10 +7,28 @@ const CHAT_MODEL = 'openai/gpt-6-astra';
 const SPEECH_MODEL = 'google/gemini-3.1-flash-tts-preview';
 const RUN_ID = 'X-Lovable-AIG-Run-ID';
 
+const HUB_TOOL_NAMES = [
+  'search_devices',
+  'list_late_devices',
+  'list_devices_at_company',
+  'get_device_history',
+  'find_paper',
+  'get_company_info',
+  'draft_reminder_message',
+  'open_screen',
+  'start_send_to_company',
+  'start_mark_returned',
+] as const;
+
 const ChatBody = z.object({
   language: z.enum(['fr', 'en', 'ar']),
   context: z.string().max(12000),
   messages: z.array(z.object({ role: z.enum(['user', 'assistant']), content: z.string().min(1).max(4000) })).min(1).max(20),
+});
+
+const HubToolCallSchema = z.object({
+  tool: z.enum(HUB_TOOL_NAMES),
+  args: z.record(z.union([z.string(), z.number(), z.boolean(), z.null()])).optional(),
 });
 
 function instructions(language: string, context: string) {
@@ -18,6 +36,7 @@ function instructions(language: string, context: string) {
 Reply in ${language === 'ar' ? 'Arabic' : language === 'en' ? 'English' : 'French'} unless she writes in another language, then match her. Keep answers short (1-4 sentences), kind and clear; your reply may be read aloud, so avoid markdown, lists and emojis.
 You can answer any general question. For questions about her devices, companies or papers, use ONLY the verified app data below; if the answer is not in it, say you are not sure. Never invent device data. Never ask for or mention patient information.
 You cannot change data yet: if she asks you to send or return a device, tell her which button to use (the + button, or "Retourné" on the device).
+STRICT TOOL-CALLING RULES: use only names from ${HUB_TOOL_NAMES.join(', ')}. A valid tool call must match this schema: ${JSON.stringify(HubToolCallSchema.shape)}. Do not hallucinate device IDs, company IDs, or repair costs. If a required value is missing, say you need it rather than inventing it.
 Dates are day/month/year. Money in TND with 3 decimals.
 VERIFIED APP DATA (JSON):
 ${context}`;
