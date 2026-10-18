@@ -5,18 +5,18 @@ import { mergeImported } from './csv-import';
 import { businessDaysBetween, expectedReturn, isLate, sortAway } from './rules';
 
 type State = ReturnType<typeof createDemoData> & {
-  markReturned: (id: string) => void;
+  markReturned: (id: string, returnedDate?: string, returnedNotes?: string) => void;
   undoReturned: (id: string) => void;
-  send: (id: string, companyId: string, problem: string) => void;
+  send: (id: string, companyId: string, problem: string, sentDate?: string) => void;
   importDevices: (records: Device[]) => void;
   resetDemo: () => void;
 };
 
 export const useStore = create<State>()(persist(set => ({
   ...createDemoData(),
-  markReturned: id => set(s => ({ devices: s.devices.map(d => d.id === id ? { ...d, status: 'service', returnedDate: new Date().toISOString() } : d), papers: [...s.papers, { id: `p${Date.now()}`, kind: 'reception', deviceId: id, companyId: s.devices.find(d => d.id === id)?.companyId ?? '', date: new Date().toISOString() }] })),
-  undoReturned: id => set(s => ({ devices: s.devices.map(d => d.id === id ? { ...d, status: 'away', returnedDate: undefined } : d), papers: s.papers.filter(p => !(p.deviceId === id && p.kind === 'reception' && Date.now() - new Date(p.date).getTime() < 60000)) })),
-  send: (id, companyId, problem) => set(s => ({ devices: s.devices.map(d => d.id === id ? { ...d, status: 'away', companyId, problem, sentDate: new Date().toISOString(), returnedDate: undefined } : d), papers: [...s.papers, { id: `p${Date.now()}`, kind: 'dispatch', deviceId: id, companyId, date: new Date().toISOString() }] })),
+  markReturned: (id, returnedDate = new Date().toISOString(), returnedNotes = '') => set(s => ({ devices: s.devices.map(d => d.id === id ? { ...d, status: 'service', returnedDate, returnedNotes } : d), papers: [...s.papers, { id: `p${Date.now()}`, kind: 'reception', deviceId: id, companyId: s.devices.find(d => d.id === id)?.companyId ?? '', date: returnedDate }] })),
+  undoReturned: id => set(s => ({ devices: s.devices.map(d => d.id === id ? { ...d, status: 'away', returnedDate: undefined, returnedNotes: undefined } : d), papers: s.papers.filter(p => !(p.deviceId === id && p.kind === 'reception' && Date.now() - new Date(p.date).getTime() < 60000)) })),
+  send: (id, companyId, problem, sentDate = new Date().toISOString()) => set(s => ({ devices: s.devices.map(d => d.id === id ? { ...d, status: 'away', companyId, problem, sentDate, returnedDate: undefined, returnedNotes: undefined } : d), papers: [...s.papers, { id: `p${Date.now()}`, kind: 'dispatch', deviceId: id, companyId, date: sentDate }] })),
   importDevices: records => set(s => ({ devices: mergeImported(s.devices, records) })),
   resetDemo: () => set(createDemoData()),
 }), { name: 's-it-hub-data', version: 1 }));

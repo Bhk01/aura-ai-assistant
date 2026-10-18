@@ -27,6 +27,7 @@ import { useDesign } from "@/logic/design-context";
 import { departmentOf, awayList, useStore, type AwayItem } from "@/logic/store";
 import { formatDate } from "@/logic/rules";
 import { Hub } from "@/hub/hub";
+import { ReturnReceiptForm } from "@/components/hub/device-workflow";
 import printer from "@/assets/printer.png";
 
 type Dialog =
@@ -176,7 +177,9 @@ export function TodayScreen({
   const count = useMotionValue(0);
   const [countText, setCountText] = useState("00");
   const [undoId, setUndoId] = useState<string | null>(null);
+  const [returnDeviceId, setReturnDeviceId] = useState<string | null>(null);
   const undoTimer = useRef<number | undefined>(undefined);
+  const returnDevice = devices.find((device) => device.id === returnDeviceId) ?? null;
 
   useEffect(() => {
     const controls = animate(count, overdue.length, {
@@ -191,9 +194,9 @@ export function TodayScreen({
 
   useEffect(() => () => window.clearTimeout(undoTimer.current), []);
 
-  function handleReturned(id: string) {
+  function handleReturned(id: string, returnedAt: string, notes: string) {
     window.clearTimeout(undoTimer.current);
-    markReturned(id);
+    markReturned(id, returnedAt, notes);
     setUndoId(id);
     undoTimer.current = window.setTimeout(() => setUndoId(null), 6000);
   }
@@ -203,6 +206,10 @@ export function TodayScreen({
     undoReturned(undoId);
     window.clearTimeout(undoTimer.current);
     setUndoId(null);
+  }
+
+  function requestReturn(id: string) {
+    setReturnDeviceId(id);
   }
 
   function renderGroup(title: string, items: AwayItem[], emptyText?: string) {
@@ -220,7 +227,7 @@ export function TodayScreen({
             <SwipeCard
               key={item.device.id}
               item={item}
-              onReturned={handleReturned}
+              onReturned={requestReturn}
               onRemind={() => open("reminder")}
               onOpen={() => {
                 if (onOpenDevice) onOpenDevice(item.device.id);
@@ -418,6 +425,20 @@ export function TodayScreen({
           )}
         </AnimatePresence>
       </main>
+      {returnDevice && (
+        <div className="modal-backdrop receipt-backdrop">
+          <section className="modal" role="dialog" aria-modal="true" aria-labelledby="return-receipt-title">
+            <ReturnReceiptForm
+              device={returnDevice}
+              onCancel={() => setReturnDeviceId(null)}
+              onConfirm={(returnedAt, notes) => {
+                handleReturned(returnDevice.id, returnedAt, notes);
+                setReturnDeviceId(null);
+              }}
+            />
+          </section>
+        </div>
+      )}
     </>
   );
 }

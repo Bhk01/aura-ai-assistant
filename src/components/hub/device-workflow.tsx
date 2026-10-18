@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { PDFDocument } from "pdf-lib";
 import {
   ArrowRight,
+  Camera,
   Check,
   FileDown,
   FileText,
@@ -9,10 +10,12 @@ import {
   Printer,
   Search,
   ShieldAlert,
+  X,
   Wrench,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useDesign } from "@/logic/design-context";
+import type { CopyKey, Language } from "@/logic/design-context";
 import type { Company, Device } from "@/logic/demo-data";
 import { departmentOf, useStore } from "@/logic/store";
 import { previewCsv } from "@/logic/csv-import";
@@ -22,49 +25,139 @@ function sanitizeFileName(value: string) {
   return value.replace(/[^a-z0-9-_]+/gi, "-").replace(/-+/g, "-").toLowerCase();
 }
 
-async function renderPdfDocument(title: string, lines: string[]) {
+type PdfCopy = {
+  hospital: string;
+  dispatchTitle: string;
+  receptionTitle: string;
+  inventory: string;
+  serial: string;
+  brand: string;
+  type: string;
+  typePrinter: string;
+  typePc: string;
+  typeMonitor: string;
+  department: string;
+  company: string;
+  reason: string;
+  sentDate: string;
+  expectedReturnDate: string;
+  returnDate: string;
+  technicianNotes: string;
+  responsibleSignature: string;
+  carrierSignature: string;
+  unspecified: string;
+  noNotes: string;
+};
+
+function getPdfCopy(t: (key: CopyKey) => string): PdfCopy {
+  return {
+    hospital: t("hospital"),
+    dispatchTitle: t("dispatch"),
+    receptionTitle: t("reception"),
+    inventory: t("inventory"),
+    serial: t("serial"),
+    brand: t("brand"),
+    type: t("deviceType"),
+    typePrinter: t("typePrinter"),
+    typePc: t("typePc"),
+    typeMonitor: t("typeMonitor"),
+    department: t("department"),
+    company: t("company"),
+    reason: t("dispatchReason"),
+    sentDate: t("sentDate"),
+    expectedReturnDate: t("expectedReturnDate"),
+    returnDate: t("returnDate"),
+    technicianNotes: t("technicianNotes"),
+    responsibleSignature: t("responsibleSignature"),
+    carrierSignature: t("carrierSignature"),
+    unspecified: t("unspecified"),
+    noNotes: t("noNotes"),
+  };
+}
+
+async function renderPdfDocument(title: string, lines: string[], signatures: string[], language: string) {
   const pdfDoc = await PDFDocument.create();
   const page = pdfDoc.addPage([595, 842]);
-  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-  const bold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-  const { width, height } = page.getSize();
+  const canvas = document.createElement("canvas");
+  canvas.width = 1240;
+  canvas.height = 1754;
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Unable to create the document preview.");
 
-  page.drawText(title, {
-    x: 52,
-    y: height - 72,
-    size: 22,
-    font: bold,
-    color: rgb(0.29, 0.18, 0.48),
-  });
+  const rtl = language === "ar";
+  const fontFamily = rtl ? '"Readex Pro Variable", sans-serif' : '"Inter Variable", sans-serif';
+  await document.fonts.load(`32px ${fontFamily}`);
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.direction = rtl ? "rtl" : "ltr";
+  context.textAlign = rtl ? "right" : "left";
+  context.textBaseline = "top";
+  context.fillStyle = "#171423";
 
-  page.drawText("Hôpital Universitaire Sahloul de Sousse", {
-    x: 52,
-    y: height - 92,
-    size: 10,
-    font: font,
-    color: rgb(0.18, 0.2, 0.24),
-  });
+  const textX = rtl ? canvas.width - 100 : 100;
+  context.font = `700 52px ${fontFamily}`;
+  context.fillText(title, textX, 100);
+  context.font = `400 28px ${fontFamily}`;
+  context.fillStyle = "#514d5f";
+  context.fillText(lines[0] ?? "", textX, 180);
+  context.fillStyle = "#8b5cff";
+  context.fillRect(100, 245, canvas.width - 200, 4);
+  context.fillStyle = "#171423";
 
-  let cursorY = height - 124;
-  for (const line of lines) {
-    page.drawText(line, {
-      x: 52,
-      y: cursorY,
-      size: 11,
-      font: font,
-      color: rgb(0.1, 0.12, 0.18),
-    });
-    cursorY -= 18;
+  let cursorY = 300;
+  for (const line of lines.slice(1)) {
+    context.font = `400 30px ${fontFamily}`;
+    const words = line.split(/\s+/);
+    let currentLine = "";
+    for (const word of words) {
+      const candidate = currentLine ? `${currentLine} ${word}` : word;
+      if (context.measureText(candidate).width > canvas.width - 200 && currentLine) {
+        context.fillText(currentLine, textX, cursorY);
+        cursorY += 44;
+        currentLine = word;
+      } else {
+        currentLine = candidate;
+      }
+    }
+    if (currentLine) {
+      context.fillText(currentLine, textX, cursorY);
+      cursorY += 72;
+    }
   }
 
-  page.drawText("Signature et cachet : ____________________", {
-    x: 52,
-    y: 56,
-    size: 10,
-    font: font,
-    color: rgb(0.2, 0.2, 0.2),
+  const boxY = 1430;
+  const boxWidth = 490;
+  const boxHeight = 205;
+  const leftX = rtl ? canvas.width / 2 + 30 : 100;
+  const rightX = rtl ? 100 : canvas.width / 2 + 30;
+  [leftX, rightX].forEach((x) => {
+    context.strokeStyle = "#c8c4d1";
+    context.lineWidth = 2;
+    context.strokeRect(x, boxY, boxWidth, boxHeight);
   });
+  context.fillStyle = "#171423";
+  context.font = `600 25px ${fontFamily}`;
+  [signatures[0] ?? "", signatures[1] ?? ""].forEach((signature, index) => {
+    const x = index === 0 ? leftX : rightX;
+    const lines = signature.split(" / ");
+    const labelX = rtl ? x + boxWidth - 20 : x + 20;
+    context.fillText(lines[0] ?? "", labelX, boxY + 20, boxWidth - 40);
+    if (lines[1]) context.fillText(lines[1], labelX, boxY + 54, boxWidth - 40);
+  });
+  context.strokeStyle = "#817c8c";
+  context.lineWidth = 2;
+  context.beginPath();
+  context.moveTo(leftX + 20, boxY + 155);
+  context.lineTo(leftX + boxWidth - 20, boxY + 155);
+  context.moveTo(rightX + 20, boxY + 155);
+  context.lineTo(rightX + boxWidth - 20, boxY + 155);
+  context.stroke();
 
+  const encoded = canvas.toDataURL("image/png").split(",")[1];
+  if (!encoded) throw new Error("Unable to encode the document preview.");
+  const imageBytes = Uint8Array.from(atob(encoded), (character) => character.charCodeAt(0));
+  const image = await pdfDoc.embedPng(imageBytes);
+  page.drawImage(image, { x: 0, y: 0, width: 595, height: 842 });
   const bytes = await pdfDoc.save();
   const buffer = new ArrayBuffer(bytes.byteLength);
   new Uint8Array(buffer).set(bytes);
@@ -72,28 +165,119 @@ async function renderPdfDocument(title: string, lines: string[]) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `${sanitizeFileName(title)}.pdf`;
+  link.download = `${sanitizeFileName(title) || "s-it-hub-document"}.pdf`;
   link.click();
   URL.revokeObjectURL(url);
 }
 
 type DeviceRecord = NonNullable<ReturnType<typeof useStore.getState>["devices"][number]>;
 
-export async function generateDevicePdfs(device: DeviceRecord, company: Company, problem: string) {
-  const baseLines = [
-    `Type: ${device.type}`,
-    `Marque: ${device.brand}`,
-    `Inventaire: ${device.inventory}`,
-    `N° série: ${device.serial}`,
-    `Service: ${departmentOf(device).fr}`,
-    `Prestataire: ${company.name}`,
-    `Téléphone: ${company.phone}`,
-    `Problème: ${problem || "Non précisé"}`,
-    `Date: ${formatDate(new Date())}`,
-  ];
+export async function generateDevicePdfs(
+  device: DeviceRecord,
+  company: Company,
+  problem: string,
+  copy: PdfCopy,
+  language: Language,
+  kind: "dispatch" | "reception" = "dispatch",
+  dispatchDate?: Date,
+) {
+  const sentDate = device.sentDate ? new Date(device.sentDate) : dispatchDate ?? new Date();
+  const lines = kind === "dispatch"
+    ? [
+        copy.hospital,
+        `${copy.inventory}: ${device.inventory}`,
+        `${copy.serial}: ${device.serial}`,
+        `${copy.brand}: ${device.brand}`,
+        `${copy.type}: ${device.type === "printer" ? copy.typePrinter : device.type === "pc" ? copy.typePc : copy.typeMonitor}`,
+        `${copy.department}: ${departmentOf(device)[language]}`,
+        `${copy.company}: ${company.name}`,
+        `${copy.reason}: ${problem || copy.unspecified}`,
+        `${copy.sentDate}: ${formatDate(sentDate)}`,
+        `${copy.expectedReturnDate}: ${formatDate(expectedReturn(sentDate, company.deadlineDays))}`,
+      ]
+    : [
+        copy.hospital,
+        `${copy.inventory}: ${device.inventory}`,
+        `${copy.serial}: ${device.serial}`,
+        `${copy.brand}: ${device.brand}`,
+        `${copy.type}: ${device.type === "printer" ? copy.typePrinter : device.type === "pc" ? copy.typePc : copy.typeMonitor}`,
+        `${copy.department}: ${departmentOf(device)[language]}`,
+        `${copy.company}: ${company.name}`,
+        `${copy.returnDate}: ${device.returnedDate ? formatDate(new Date(device.returnedDate)) : formatDate(new Date())}`,
+        `${copy.technicianNotes}: ${device.returnedNotes?.trim() || copy.noNotes}`,
+      ];
+  const title = kind === "dispatch" ? copy.dispatchTitle : copy.receptionTitle;
+  await renderPdfDocument(
+    title,
+    lines,
+    kind === "dispatch"
+      ? [copy.responsibleSignature, copy.carrierSignature]
+      : [copy.responsibleSignature, copy.technicianNotes],
+    language,
+  );
+}
 
-  await renderPdfDocument("Bon de sortie", baseLines);
+function localDateInputValue(date = new Date()) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
 
+export function ReturnReceiptForm({
+  device,
+  onCancel,
+  onConfirm,
+}: {
+  device: Device;
+  onCancel: () => void;
+  onConfirm: (returnedAt: string, technicianNotes: string) => void;
+}) {
+  const { t } = useDesign();
+  const [returnedAt, setReturnedAt] = useState(localDateInputValue);
+  const [technicianNotes, setTechnicianNotes] = useState("");
+
+  return (
+    <section className="return-receipt-form" aria-labelledby="return-receipt-title">
+      <div className="receipt-heading">
+        <div>
+          <h3 id="return-receipt-title">{t("receiptTitle")}</h3>
+          <p>{device.inventory} · {device.brand}</p>
+        </div>
+        <Button variant="tool" size="tool" aria-label={t("cancel")} onClick={onCancel}>
+          <X aria-hidden="true" />
+        </Button>
+      </div>
+      <label>
+        {t("returnDate")}
+        <input
+          type="date"
+          required
+          value={returnedAt}
+          onChange={(event) => setReturnedAt(event.target.value)}
+        />
+      </label>
+      <label>
+        {t("technicianNotes")}
+        <textarea
+          rows={3}
+          value={technicianNotes}
+          onChange={(event) => setTechnicianNotes(event.target.value)}
+          placeholder={t("technicianNotes")}
+        />
+      </label>
+      <small>{t("patientWarning")}</small>
+      <div className="receipt-actions">
+        <Button variant="soft" size="touch" onClick={onCancel}>{t("cancel")}</Button>
+        <Button
+          variant="hub"
+          size="touch"
+          disabled={!returnedAt}
+          onClick={() => onConfirm(new Date(`${returnedAt}T12:00:00`).toISOString(), technicianNotes.trim())}
+        >
+          <Check aria-hidden="true" />
+          {t("saveReceipt")}
+        </Button>
+      </div>
+    </section>
+  );
 }
 
 export function DeviceInventoryDialog({
@@ -113,6 +297,11 @@ export function DeviceInventoryDialog({
   const [statusFilter, setStatusFilter] = useState<"all" | "service" | "away">("all");
   const [importMessage, setImportMessage] = useState("");
   const [importPreview, setImportPreview] = useState<ReturnType<typeof previewCsv> | null>(null);
+  const [returnDeviceId, setReturnDeviceId] = useState<string | null>(null);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [scannerMessage, setScannerMessage] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   const filtered = useMemo(() => {
     const term = query.trim().toLowerCase();
@@ -132,7 +321,100 @@ export function DeviceInventoryDialog({
           companies.find((company) => company.id === device.companyId)?.name.toLowerCase().includes(term));
       return matchesStatus && matchesText;
     });
-  }, [companies, devices, query, statusFilter]);
+  }, [companies, devices, query, statusFilter, t]);
+
+  useEffect(() => {
+    if (!cameraStream) return;
+    const video = videoRef.current;
+    if (!video) return;
+    const Detector = (window as Window & {
+      BarcodeDetector?: new (options?: { formats?: string[] }) => {
+        detect: (source: HTMLVideoElement) => Promise<Array<{ rawValue: string }>>;
+      };
+    }).BarcodeDetector;
+    if (!Detector) {
+      setCameraStream(null);
+      setScannerMessage(t("scannerUnavailable"));
+      searchInputRef.current?.focus();
+      return;
+    }
+
+    let detector: InstanceType<typeof Detector>;
+    try {
+      detector = new Detector({ formats: ["qr_code", "code_128", "code_39"] });
+    } catch {
+      setCameraStream(null);
+      setScannerMessage(t("scannerUnavailable"));
+      searchInputRef.current?.focus();
+      return;
+    }
+    let stopped = false;
+    let timer: number | undefined;
+    video.srcObject = cameraStream;
+    void video.play().then(async () => {
+      while (!stopped) {
+        try {
+          if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+            const codes = await detector.detect(video);
+            const inventoryCode = codes
+              .map((code) => code.rawValue.trim())
+              .find((value) => /^INV-[A-Z0-9-]+$/i.test(value));
+            if (inventoryCode) {
+              setQuery(inventoryCode.toUpperCase());
+              setScannerMessage(t("scannerFound"));
+              setCameraStream(null);
+              return;
+            }
+          }
+        } catch {
+          setCameraStream(null);
+          setScannerMessage(t("scannerUnavailable"));
+          searchInputRef.current?.focus();
+          return;
+        }
+        await new Promise<void>((resolve) => {
+          timer = window.setTimeout(resolve, 300);
+        });
+      }
+    }).catch(() => {
+      setCameraStream(null);
+      setScannerMessage(t("scannerUnavailable"));
+      searchInputRef.current?.focus();
+    });
+
+    return () => {
+      stopped = true;
+      if (timer !== undefined) window.clearTimeout(timer);
+      cameraStream.getTracks().forEach((track) => track.stop());
+      video.srcObject = null;
+    };
+  }, [cameraStream, t]);
+
+  async function startCameraScan() {
+    setScannerMessage("");
+    const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
+      (navigator.maxTouchPoints > 1 && window.innerWidth < 1024);
+    const Detector = (window as Window & { BarcodeDetector?: unknown }).BarcodeDetector;
+    if (
+      !isMobile ||
+      !navigator.mediaDevices?.getUserMedia ||
+      !Detector
+    ) {
+      setScannerMessage(t("scannerSearchFallback"));
+      searchInputRef.current?.focus();
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: { facingMode: { ideal: "environment" } },
+      });
+      setCameraStream(stream);
+    } catch {
+      setScannerMessage(t("scannerPermissionDenied"));
+      searchInputRef.current?.focus();
+    }
+  }
 
   function importCsv(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -147,23 +429,40 @@ export function DeviceInventoryDialog({
     event.target.value = "";
   }
 
+  const returnDevice = devices.find((device) => device.id === returnDeviceId);
+
   return (
     <div className="inventory-panel">
       <div className="inventory-toolbar">
         <div className="inventory-search">
           <Search aria-hidden="true" />
           <input
+            ref={searchInputRef}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             aria-label={t("inventory")}
             placeholder={t("searchPlaceholder")}
           />
         </div>
+        <Button variant="soft" size="tool" aria-label={t("scanBarcode")} onClick={() => void startCameraScan()}>
+          <Camera aria-hidden="true" />
+        </Button>
         <label className="inventory-import">
           <input type="file" accept=".csv,text/csv" onChange={importCsv} />
           <span>{t("csvImport")}</span>
         </label>
       </div>
+      {scannerMessage && <div className="dialog-notice" role="status">{scannerMessage}</div>}
+      {cameraStream && (
+        <div className="barcode-camera">
+          <video ref={videoRef} autoPlay muted playsInline aria-label={t("scannerSearching")} />
+          <p>{t("scannerSearching")}</p>
+          <Button variant="soft" size="touch" onClick={() => setCameraStream(null)}>
+            <X aria-hidden="true" />
+            {t("cancel")}
+          </Button>
+        </div>
+      )}
       <div className="inventory-filters">
         {(["all", "service", "away"] as const).map((filter) => (
           <Button variant="soft" size="touch"
@@ -180,7 +479,17 @@ export function DeviceInventoryDialog({
       {importPreview && <div className="csv-review"><p>{t('csvPreview')}: {importPreview.added} / {importPreview.changed}</p>
         <Button variant="hub" size="touch" onClick={() => { useStore.getState().importDevices(importPreview.records); setImportPreview(null); }}>{t('confirm')}</Button>
         <Button variant="soft" size="touch" onClick={() => setImportPreview(null)}>{t('cancel')}</Button></div>}
-      <div className="inventory-list">
+      {returnDevice ? (
+        <ReturnReceiptForm
+          device={returnDevice}
+          onCancel={() => setReturnDeviceId(null)}
+          onConfirm={(returnedAt, notes) => {
+            markReturned(returnDevice.id, returnedAt, notes);
+            setReturnDeviceId(null);
+            onClose();
+          }}
+        />
+      ) : <div className="inventory-list">
         {!filtered.length && <p>{t('noResults')}</p>}
         {filtered.map((device) => {
           const dept = departmentOf(device);
@@ -210,10 +519,7 @@ export function DeviceInventoryDialog({
                 {device.status === "away" && <Button
                   variant="hub"
                   size="touch"
-                  onClick={() => {
-                    markReturned(device.id);
-                    onClose();
-                  }}
+                  onClick={() => setReturnDeviceId(device.id)}
                 >
                   <Check aria-hidden="true" />
                   {t("markReturned")}
@@ -222,7 +528,7 @@ export function DeviceInventoryDialog({
             </div>
           );
         })}
-      </div>
+      </div>}
     </div>
   );
 }
@@ -241,6 +547,8 @@ export function DeviceDetailDialog({
   const companies = useStore((state) => state.companies);
   const papers = useStore((state) => state.papers);
   const markReturned = useStore((state) => state.markReturned);
+  const [showReceiptForm, setShowReceiptForm] = useState(false);
+  const [documentError, setDocumentError] = useState("");
 
   if (!device) return <p className="today-empty">{t("notReady")}</p>;
 
@@ -251,20 +559,19 @@ export function DeviceDetailDialog({
 
   async function handlePdf(type: "dispatch" | "reception") {
     if (!company) return;
-    const title = type === "dispatch" ? "Bon de sortie" : "PV de réception";
-    const lines = [
-      "Hôpital Universitaire Sahloul de Sousse",
-      `Document: ${title}`,
-      `Inventaire: ${currentDevice.inventory}`,
-      `N° série: ${currentDevice.serial}`,
-      `Marque: ${currentDevice.brand}`,
-      `Département: ${departmentOf(currentDevice).fr}`,
-      `Prestataire: ${company.name}`,
-      `Téléphone: ${company.phone}`,
-      `Problème: ${currentDevice.problem || "Aucun détail"}`,
-      `Date: ${formatDate(new Date())}`,
-    ];
-    await renderPdfDocument(title, lines);
+    setDocumentError("");
+    try {
+      await generateDevicePdfs(
+        currentDevice,
+        company,
+        currentDevice.problem ?? "",
+        getPdfCopy(t),
+        language,
+        type,
+      );
+    } catch {
+      setDocumentError(t("pdfFailed"));
+    }
   }
 
   return (
@@ -294,18 +601,29 @@ export function DeviceDetailDialog({
           <Wrench aria-hidden="true" />
           {t("send")}
         </Button>}
-        {currentDevice.status === "away" && <Button variant="soft" size="touch" onClick={() => markReturned(currentDevice.id)}>
+        {currentDevice.status === "away" && <Button variant="soft" size="touch" onClick={() => setShowReceiptForm(true)}>
           <Check aria-hidden="true" />
           {t("markReturned")}
         </Button>}
       </div>
+      {showReceiptForm && (
+        <ReturnReceiptForm
+          device={currentDevice}
+          onCancel={() => setShowReceiptForm(false)}
+          onConfirm={(returnedAt, notes) => {
+            markReturned(currentDevice.id, returnedAt, notes);
+            setShowReceiptForm(false);
+          }}
+        />
+      )}
+      {documentError && <p className="pin-error" role="alert">{documentError}</p>}
       <p className="dialog-notice">{t("pdfDraft")}</p>
       <div className="pdf-stack">
-        <Button variant="soft" size="touch" onClick={() => void handlePdf("dispatch")} data-hub-id="paper-docs">
+        <Button variant="soft" size="touch" disabled={!company} onClick={() => void handlePdf("dispatch")} data-hub-id="paper-docs">
           <FileDown aria-hidden="true" />
           {t("dispatch")}
         </Button>
-        <Button variant="soft" size="touch" onClick={() => void handlePdf("reception")} data-hub-id="paper-docs">
+        <Button variant="soft" size="touch" disabled={!company || !currentDevice.returnedDate} onClick={() => void handlePdf("reception")} data-hub-id="paper-docs">
           <FileText aria-hidden="true" />
           {t("reception")}
         </Button>
@@ -345,6 +663,7 @@ export function DeviceSendDialog({
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>(companies[0]?.id ?? "");
   const [problem, setProblem] = useState("");
   const [saving, setSaving] = useState(false);
+  const [actionError, setActionError] = useState("");
 
   if (!device) {
     return <p className="today-empty">{t("notReady")}</p>;
@@ -356,11 +675,27 @@ export function DeviceSendDialog({
     if (!selectedCompanyId || saving) return;
     setSaving(true);
     const company = companies.find((item) => item.id === selectedCompanyId);
-    send(currentDevice.id, selectedCompanyId, problem || "Diagnostic à confirmer");
-    if (company && print) {
-      await generateDevicePdfs(currentDevice, company, problem || "Diagnostic à confirmer");
+    const sentAt = new Date();
+    const finalProblem = problem.trim() || t("diagnosticToConfirm");
+    try {
+      if (company && print) {
+        await generateDevicePdfs(
+          currentDevice,
+          company,
+          finalProblem,
+          getPdfCopy(t),
+          language,
+          "dispatch",
+          sentAt,
+        );
+      }
+      send(currentDevice.id, selectedCompanyId, finalProblem, sentAt.toISOString());
+      onClose();
+    } catch {
+      setActionError(t("pdfFailed"));
+    } finally {
+      setSaving(false);
     }
-    onClose();
   }
 
   return (
@@ -401,7 +736,7 @@ export function DeviceSendDialog({
             >
               <strong>{company.name}</strong>
               <span>{company.deadlineDays} {t("dayUnit")}</span>
-              <small>{company.contract === "warranty" ? "Garantie" : company.contract === "contract" ? "Contrat" : "Sans contrat"}</small>
+              <small>{company.contract === "warranty" ? t("warranty") : company.contract === "contract" ? t("contract") : t("noContract")}</small>
             </Button>
           ))}
         </div>
@@ -424,6 +759,7 @@ export function DeviceSendDialog({
           <small className="text-muted-foreground">{t('patientWarning')}</small>
           <div className="detail-row"><span>{t('expected')}</span><strong>{formatDate(expectedReturn(new Date(), companies.find(c => c.id === selectedCompanyId)?.deadlineDays ?? 0))}</strong></div>
           <p className="dialog-notice">{t('pdfDraft')}</p>
+          {actionError && <p className="pin-error" role="alert">{actionError}</p>}
           <div className="device-detail-actions">
             <Button variant="soft" size="touch" onClick={() => setStep(1)}>
               {t("back")}

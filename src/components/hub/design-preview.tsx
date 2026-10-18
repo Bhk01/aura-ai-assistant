@@ -30,13 +30,12 @@ import {
   DeviceSendDialog,
 } from "@/components/hub/device-workflow";
 import {
-  enrollLocalBiometric,
   readLockSettings,
   saveAutoLockMinutes,
   type LockSettings,
 } from "@/logic/local-lock";
 import { createAlertTriggers, playHospitalChime, SOUND_CHIMES } from "@/logic/audio";
-import { awayList, useStore } from "@/logic/store";
+import { useStore } from "@/logic/store";
 import { CompanyList, PaperList } from "./record-lists";
 import { AssistantPanel } from "./assistant-panel";
 import { dueTomorrowReminders, withinQuietHours } from "@/logic/reminders";
@@ -607,25 +606,47 @@ function PreviewContent({ gallery }: { gallery: boolean }) {
   const [lockMode, setLockMode] = useState<LockMode>(null);
   const [lockSettings, setLockSettings] = useState<LockSettings | null>(null);
   const [sessionActive, setSessionActive] = useState(false);
+  const [startupReady, setStartupReady] = useState(gallery);
+  const [startupError, setStartupError] = useState(false);
   const { t } = useDesign();
   const [thank, setThank] = useState(false);
   const [remindersEnabled, setRemindersEnabled] = useState(false);
-  useEffect(() => { setRemindersEnabled(localStorage.getItem("hub-reminders") === "true"); }, []);
+  useEffect(() => {
+    if (gallery) return;
+    try {
+      const savedSettings = readLockSettings();
+      if (savedSettings) {
+        setLockSettings(savedSettings);
+        setLockMode("locked");
+        setWelcome(false);
+      }
+      setRemindersEnabled(localStorage.getItem("hub-reminders") === "true");
+    } catch {
+      setStartupError(true);
+    } finally {
+      setStartupReady(true);
+    }
+  }, [gallery]);
   const [notificationMessages, setNotificationMessages] = useState<string[]>([]);
   const devices = useStore((state) => state.devices);
   const companies = useStore((state) => state.companies);
-  const alerts = useMemo(() => createAlertTriggers(devices, companies).slice(0, 4), [companies, devices]);
   const lastActivity = useRef(0);
   function replay() {
     setDialog(null);
     setSelectedDeviceId(null);
+    setSessionActive(false);
+    setLockMode(null);
     setWelcome(true);
   }
   function enterApp() {
-    const savedSettings = readLockSettings();
-    setLockSettings(savedSettings);
-    setWelcome(false);
-    setLockMode(savedSettings ? "locked" : "setup");
+    try {
+      const savedSettings = readLockSettings();
+      setLockSettings(savedSettings);
+      setWelcome(false);
+      setLockMode(savedSettings ? "locked" : "setup");
+    } catch {
+      setStartupError(true);
+    }
   }
   function unlock(settings: LockSettings) {
     setLockSettings(settings);
@@ -690,6 +711,14 @@ function PreviewContent({ gallery }: { gallery: boolean }) {
     return () => { clearInterval(timer); window.removeEventListener('focus', check); };
   }, [devices, companies, lockMode, sessionActive, remindersEnabled, t]);
 
+  if (!startupReady || startupError) {
+    return (
+      <div className="startup-gate" role={startupError ? "alert" : "status"}>
+        <p>{startupError ? t("startupLockError") : t("loading")}</p>
+      </div>
+    );
+  }
+
   function changeAutoLock(minutes: LockSettings["autoLockMinutes"]) {
     const updated = saveAutoLockMinutes(minutes);
     setLockSettings(updated);
@@ -697,11 +726,14 @@ function PreviewContent({ gallery }: { gallery: boolean }) {
 
   return (
     <>
-      <Header open={setDialog} onThank={() => setThank(true)} />
       {gallery ? (
-        <Gallery open={setDialog} />
-      ) : (
         <>
+          <Header open={setDialog} onThank={() => setThank(true)} />
+          <Gallery open={setDialog} />
+        </>
+      ) : sessionActive ? (
+        <>
+          <Header open={setDialog} onThank={() => setThank(true)} />
           <TodayScreen
             open={setDialog}
             onOpenDevice={(deviceId) => {
@@ -711,9 +743,9 @@ function PreviewContent({ gallery }: { gallery: boolean }) {
           />
           <BottomNav open={setDialog} />
         </>
-      )}
+      ) : null}
       <AnimatePresence>
-        {dialog && (
+        {sessionActive && dialog && (
           <PreviewDialog
             remindersEnabled={remindersEnabled}
             onRemindersChange={enabled => { setRemindersEnabled(enabled); localStorage.setItem("hub-reminders", String(enabled)); }}
@@ -745,7 +777,7 @@ function PreviewContent({ gallery }: { gallery: boolean }) {
           />
         )}
       </AnimatePresence>
-      {thank && <div className="thank-scene" role="dialog" aria-modal="true" aria-label={t('thank')}>
+      {thank && sessionActive && <div className="thank-scene" role="dialog" aria-modal="true" aria-label={t('thank')}>
         <Button variant="tool" size="tool" className="modal-close" onClick={() => setThank(false)} aria-label={t('close')}><X /></Button>
         <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>{t('thank')}<br />ilhem letaief.</motion.h1>
         <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>{t('thankLine')}</motion.p>

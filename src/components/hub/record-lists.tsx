@@ -25,7 +25,13 @@ export function PaperList({ onOpenDevice }: { onOpenDevice: (id: string) => void
   const papers = useStore(s => s.papers);
   const devices = useStore(s => s.devices);
   const companies = useStore(s => s.companies);
-  return <div className="record-list">{papers.map(paper => <Button className="paper-record" variant="soft" size="touch" key={paper.id} onClick={() => onOpenDevice(paper.deviceId)}>
-    <strong>{t(paper.kind)}</strong><span>{devices.find(d => d.id === paper.deviceId)?.inventory} · {companies.find(c => c.id === paper.companyId)?.name}</span><time>{formatDate(new Date(paper.date))}</time>
-  </Button>)}{!papers.length && <p>{t('noPapers')}</p>}</div>;
+  return <div className="record-list">{papers.map(paper => {
+    const device = devices.find(d => d.id === paper.deviceId);
+    return <Button className="paper-record" variant="soft" size="touch" key={paper.id} onClick={() => onOpenDevice(paper.deviceId)}>
+      <strong>{t(paper.kind)}</strong>
+      <span>{device?.inventory} · {companies.find(c => c.id === paper.companyId)?.name}</span>
+      <time>{formatDate(new Date(paper.date))}</time>
+      {paper.kind === 'reception' && device?.returnedNotes && <small>{t('technicianNotes')}: {device.returnedNotes}</small>}
+    </Button>;
+  })}{!papers.length && <p>{t('noPapers')}</p>}</div>;
 }

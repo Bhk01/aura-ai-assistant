@@ -3,7 +3,7 @@ import { addBusinessDays } from './rules';
 export type DeviceType = 'printer' | 'monitor' | 'pc';
 export type Department = { id: string; fr: string; en: string; ar: string; critical: boolean };
 export type Company = { id: string; name: string; phone: string; deadlineDays: number; contract: 'warranty' | 'contract' | 'none'; contractEnd: string };
-export type Device = { id: string; inventory: string; serial: string; type: DeviceType; brand: string; departmentId: string; status: 'service' | 'away'; companyId?: string; sentDate?: string; problem?: string; returnedDate?: string | undefined };
+export type Device = { id: string; inventory: string; serial: string; type: DeviceType; brand: string; departmentId: string; status: 'service' | 'away'; companyId?: string; sentDate?: string; problem?: string; returnedDate?: string | undefined; returnedNotes?: string | undefined };
 export type Paper = { id: string; kind: 'dispatch' | 'reception' | 'invoice'; deviceId: string; companyId: string; date: string };
 
 export const departments: Department[] = [

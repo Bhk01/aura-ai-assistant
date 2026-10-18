@@ -101,11 +101,25 @@ h1,h2,h3,.display { font-family: var(--font-display); }
 .hub-stop-button { min-width:110px; }
 .hub-target-active { box-shadow:0 0 0 2px color-mix(in oklab, var(--primary) 54%, transparent), 0 6px 18px var(--shadow); border-color:var(--primary); }
 .sound-studio-panel { display:flex; flex-direction:column; gap:12px; }
+.startup-gate { min-height:100dvh; display:grid; place-items:center; padding:24px; text-align:center; color:var(--muted-foreground); }
+.startup-gate p { max-width:360px; line-height:1.7; }
 .sound-studio-panel input[type="range"] { width:100%; accent-color:var(--primary); }
 .schedule-list { list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:8px; }
 .schedule-list li { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 10px; border-radius:10px; background:color-mix(in oklab, var(--primary) 9%, var(--secondary)); }
 .schedule-list strong { font-size:12px; }
 .inventory-toolbar { display:flex; gap:12px; align-items:center; }
+.return-receipt-form { display:flex; flex-direction:column; gap:14px; padding:18px; border:1px solid var(--border); border-radius:20px; background:var(--secondary); }
+.receipt-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.receipt-heading h3 { margin:0; font-size:20px; }
+.receipt-heading p { margin:5px 0 0; color:var(--muted-foreground); font-size:12px; }
+.return-receipt-form label { display:flex; flex-direction:column; gap:7px; color:var(--muted-foreground); font-size:12px; }
+.return-receipt-form input,.return-receipt-form textarea { width:100%; border:1px solid var(--border); border-radius:12px; padding:11px 12px; color:var(--foreground); background:var(--card); font:inherit; }
+.return-receipt-form small { color:var(--muted-foreground); font-size:11px; }
+.receipt-actions { display:flex; justify-content:flex-end; gap:8px; flex-wrap:wrap; }
+.receipt-backdrop { z-index:60; }
+.barcode-camera { display:flex; flex-direction:column; align-items:center; gap:10px; padding:12px; border:1px solid var(--border); border-radius:18px; background:var(--secondary); }
+.barcode-camera video { width:min(100%,360px); aspect-ratio:4/3; object-fit:cover; border-radius:12px; background:var(--background); }
+.barcode-camera p { margin:0; color:var(--muted-foreground); font-size:12px; }
 .inventory-search { flex:1; display:flex; align-items:center; gap:8px; padding:10px 12px; border:1px solid var(--border); border-radius:16px; background:var(--secondary); }
 .inventory-search input { flex:1; background:transparent; border:0; color:var(--foreground); font:inherit; }
 .inventory-search input:focus { outline:none; }

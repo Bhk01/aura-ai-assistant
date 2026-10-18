@@ -1,9 +1,18 @@
 import Papa from 'papaparse';
 import { departments, type Device } from './demo-data';
 
+interface CsvRow {
+  inventory_no?: string;
+  serial_no?: string;
+  type?: string;
+  department?: string;
+  problem?: string;
+  reported_date?: string;
+}
+
 const required = ['inventory_no', 'serial_no', 'type', 'department', 'problem', 'reported_date'];
 export function previewCsv(text: string, devices: Device[]) {
-  const result = Papa.parse<Record<string, string>>(text, { header: true, skipEmptyLines: 'greedy', transformHeader: h => h.trim() });
+  const result = Papa.parse<CsvRow>(text, { header: true, skipEmptyLines: 'greedy', transformHeader: h => h.trim() });
   if (result.errors.length || required.some(h => !result.meta.fields?.includes(h))) throw new Error('csvInvalid');
   const seen = new Set<string>();
   const records = result.data.map(row => {
