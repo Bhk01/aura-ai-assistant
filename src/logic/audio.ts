@@ -66,10 +66,12 @@ export async function playHospitalChime(index: number, volume = 0.42): Promise<v
   if (!AudioCtor) return;
 
   const context = new AudioCtor();
-  const chime = SOUND_CHIMES[index % SOUND_CHIMES.length]!;
+  const chime = SOUND_CHIMES[index % SOUND_CHIMES.length];
+  if (!chime) { await context.close(); return; }
+  await context.resume();
   const start = context.currentTime;
   const master = context.createGain();
-  master.gain.value = Math.min(1, Math.max(0.05, volume));
+  master.gain.value = Math.min(1, Math.max(0, volume));
   master.connect(context.destination);
 
   chime.harmonics.forEach((frequency, toneIndex) => {
