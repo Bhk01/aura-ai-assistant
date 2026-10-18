@@ -15,7 +15,8 @@ import { Button } from "@/components/ui/button";
 import { useDesign } from "@/logic/design-context";
 import type { Company, Device } from "@/logic/demo-data";
 import { departmentOf, useStore } from "@/logic/store";
-import { formatDate } from "@/logic/rules";
+import { previewCsv } from "@/logic/csv-import";
+import { formatDate, expectedReturn, isLate } from "@/logic/rules";
 
 function sanitizeFileName(value: string) {
   return value.replace(/[^a-z0-9-_]+/gi, "-").replace(/-+/g, "-").toLowerCase();
@@ -56,7 +57,7 @@ async function renderPdfDocument(title: string, lines: string[]) {
     cursorY -= 18;
   }
 
-  page.drawText("Signature — S-IT HUB", {
+  page.drawText("Signature et cachet : ____________________", {
     x: 52,
     y: 56,
     size: 10,
@@ -92,15 +93,7 @@ export async function generateDevicePdfs(device: DeviceRecord, company: Company,
   ];
 
   await renderPdfDocument("Bon de sortie", baseLines);
-  await renderPdfDocument("PV de réception", [
-    `PV de réception - ${device.inventory}`,
-    `Appareil: ${device.brand}`,
-    `Service: ${departmentOf(device).fr}`,
-    `Entreprise: ${company.name}`,
-    `Contrat: ${company.contract}`,
-    `État reçu: bon`,
-    `Observation: ${problem || "Aucune observation"}`,
-  ]);
+
 }
 
 export function DeviceInventoryDialog({
@@ -112,13 +105,14 @@ export function DeviceInventoryDialog({
   onOpenSend: (id: string) => void;
   onClose: () => void;
 }) {
-  const { t } = useDesign();
+  const { t, language } = useDesign();
   const devices = useStore((state) => state.devices);
   const companies = useStore((state) => state.companies);
   const markReturned = useStore((state) => state.markReturned);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "service" | "away">("all");
   const [importMessage, setImportMessage] = useState("");
+  const [importPreview, setImportPreview] = useState<ReturnType<typeof previewCsv> | null>(null);
 
   const filtered = useMemo(() => {
     const term = query.trim().toLowerCase();
@@ -128,6 +122,9 @@ export function DeviceInventoryDialog({
         !term ||
         device.inventory.toLowerCase().includes(term) ||
         device.serial.toLowerCase().includes(term) ||
+        device.brand.toLowerCase().includes(term) ||
+        device.type.toLowerCase().includes(term) ||
+        t(device.type === "printer" ? "typePrinter" : device.type === "pc" ? "typePc" : "typeMonitor").toLowerCase().includes(term) ||
         departmentOf(device).fr.toLowerCase().includes(term) ||
         departmentOf(device).en.toLowerCase().includes(term) ||
         departmentOf(device).ar.toLowerCase().includes(term) ||
@@ -143,11 +140,8 @@ export function DeviceInventoryDialog({
     const reader = new FileReader();
     reader.onload = () => {
       const text = String(reader.result ?? "");
-      const rows = text
-        .split(/\r?\n/)
-        .map((line) => line.trim())
-        .filter(Boolean);
-      setImportMessage(rows.length > 1 ? `${rows.length - 1} appareil(s) détecté(s) dans le CSV.` : "CSV vide ou invalide.");
+      try { setImportPreview(previewCsv(text, devices)); setImportMessage(''); }
+      catch { setImportMessage(t('csvInvalid')); setImportPreview(null); }
     };
     reader.readAsText(file);
     event.target.value = "";
@@ -162,33 +156,37 @@ export function DeviceInventoryDialog({
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             aria-label={t("inventory")}
-            placeholder="INV-0402 / serial / service"
+            placeholder={t("searchPlaceholder")}
           />
         </div>
         <label className="inventory-import">
           <input type="file" accept=".csv,text/csv" onChange={importCsv} />
-          <span>{t("scan")}</span>
+          <span>{t("csvImport")}</span>
         </label>
       </div>
       <div className="inventory-filters">
         {(["all", "service", "away"] as const).map((filter) => (
-          <button
+          <Button variant="soft" size="touch"
             key={filter}
             type="button"
             className={statusFilter === filter ? "filter-chip active" : "filter-chip"}
             onClick={() => setStatusFilter(filter)}
           >
-            {filter === "all" ? t("allDevices") : filter === "away" ? t("late") : "Service"}
-          </button>
+            {filter === "all" ? t("allDevices") : filter === "away" ? t("away") : t("inService")}
+          </Button>
         ))}
       </div>
       {importMessage && <div className="dialog-notice">{importMessage}</div>}
+      {importPreview && <div className="csv-review"><p>{t('csvPreview')}: {importPreview.added} / {importPreview.changed}</p>
+        <Button variant="hub" size="touch" onClick={() => { useStore.getState().importDevices(importPreview.records); setImportPreview(null); }}>{t('confirm')}</Button>
+        <Button variant="soft" size="touch" onClick={() => setImportPreview(null)}>{t('cancel')}</Button></div>}
       <div className="inventory-list">
+        {!filtered.length && <p>{t('noResults')}</p>}
         {filtered.map((device) => {
           const dept = departmentOf(device);
           return (
             <div key={device.id} className="inventory-row">
-              <button type="button" className="inventory-card" onClick={() => onOpenDevice(device.id)}>
+              <Button variant="soft" type="button" className="inventory-card" onClick={() => onOpenDevice(device.id)}>
                 <div className="inventory-visual">
                   {device.type === "printer" ? <Printer aria-hidden="true" /> : <Monitor aria-hidden="true" />}
                 </div>
@@ -199,17 +197,17 @@ export function DeviceInventoryDialog({
                 </div>
                 <div className="inventory-meta">
                   <span className={device.status === "away" ? "status critical-status" : "status due"}>
-                    {dept.fr}
+                    {dept[language]}
                   </span>
-                  <em>{device.status === "away" ? t("late") : t("success")}</em>
+                  <em>{device.status === "away" ? t("away") : t("inService")}</em>
                 </div>
-              </button>
+              </Button>
               <div className="inventory-actions">
-                <Button variant="soft" size="touch" onClick={() => onOpenSend(device.id)} data-hub-id="device-send">
+                {device.status === "service" && <Button variant="soft" size="touch" onClick={() => onOpenSend(device.id)} data-hub-id="device-send">
                   <Wrench aria-hidden="true" />
                   {t("send")}
-                </Button>
-                <Button
+                </Button>}
+                {device.status === "away" && <Button
                   variant="hub"
                   size="touch"
                   onClick={() => {
@@ -219,7 +217,7 @@ export function DeviceInventoryDialog({
                 >
                   <Check aria-hidden="true" />
                   {t("markReturned")}
-                </Button>
+                </Button>}
               </div>
             </div>
           );
@@ -238,7 +236,7 @@ export function DeviceDetailDialog({
   onOpenSend: (id: string) => void;
   onClose: () => void;
 }) {
-  const { t } = useDesign();
+  const { t, language } = useDesign();
   const device = useStore((state) => state.devices.find((item) => item.id === deviceId) ?? null);
   const companies = useStore((state) => state.companies);
   const papers = useStore((state) => state.papers);
@@ -248,6 +246,7 @@ export function DeviceDetailDialog({
 
   const currentDevice: Device = device;
   const company = currentDevice.companyId ? companies.find((item) => item.id === currentDevice.companyId) : undefined;
+  const expected = company && currentDevice.sentDate ? expectedReturn(new Date(currentDevice.sentDate), company.deadlineDays) : null;
   const associatedPapers = papers.filter((paper) => paper.deviceId === currentDevice.id);
 
   async function handlePdf(type: "dispatch" | "reception") {
@@ -276,50 +275,51 @@ export function DeviceDetailDialog({
       <h3>{currentDevice.brand}</h3>
       <span className="status">
         <ShieldAlert aria-hidden="true" />
-        {currentDevice.status === "away" ? t("late") : t("success")}
+        {currentDevice.status === "away" ? t(expected && isLate(expected) ? "late" : "away") : t("inService")}
       </span>
-      {[
+      {([
         ["inventory", currentDevice.inventory],
         ["serial", currentDevice.serial],
-        ["department", departmentOf(currentDevice).fr],
+        ["department", departmentOf(currentDevice)[language]],
         ["company", company?.name ?? "—"],
-        ["expected", currentDevice.sentDate ? formatDate(new Date(currentDevice.sentDate)) : t("sample")],
-      ].map(([key, value]) => (
+        ["expected", expected ? formatDate(expected) : "—"],
+      ] as const).map(([key, value]) => (
         <div className="detail-row" key={String(key)}>
-          <span>{String(key)}</span>
+          <span>{t(key)}</span>
           <strong>{String(value)}</strong>
         </div>
       ))}
       <div className="device-detail-actions">
-        <Button variant="hub" size="touch" onClick={() => onOpenSend(currentDevice.id)} data-hub-id="device-send">
+        {currentDevice.status === "service" && <Button variant="hub" size="touch" onClick={() => onOpenSend(currentDevice.id)} data-hub-id="device-send">
           <Wrench aria-hidden="true" />
           {t("send")}
-        </Button>
-        <Button variant="soft" size="touch" onClick={() => markReturned(currentDevice.id)}>
+        </Button>}
+        {currentDevice.status === "away" && <Button variant="soft" size="touch" onClick={() => markReturned(currentDevice.id)}>
           <Check aria-hidden="true" />
           {t("markReturned")}
-        </Button>
+        </Button>}
       </div>
+      <p className="dialog-notice">{t("pdfDraft")}</p>
       <div className="pdf-stack">
         <Button variant="soft" size="touch" onClick={() => void handlePdf("dispatch")} data-hub-id="paper-docs">
           <FileDown aria-hidden="true" />
-          Bon de sortie
+          {t("dispatch")}
         </Button>
         <Button variant="soft" size="touch" onClick={() => void handlePdf("reception")} data-hub-id="paper-docs">
           <FileText aria-hidden="true" />
-          PV de réception
+          {t("reception")}
         </Button>
       </div>
       <div className="detail-row-block">
-        <span>Documents</span>
+        <span>{t("papers")}</span>
         {associatedPapers.length > 0 ? (
           <ul className="docs-list">
             {associatedPapers.map((paper) => (
-              <li key={paper.id}>{paper.kind === "dispatch" ? "Bon de sortie" : "PV de réception"}</li>
+              <li key={paper.id}>{t(paper.kind)}</li>
             ))}
           </ul>
         ) : (
-          <strong>Aucun document associé</strong>
+          <strong>{t("noPapers")}</strong>
         )}
       </div>
       <Button variant="tool" size="tool" className="back-button" onClick={onClose}>
@@ -337,13 +337,14 @@ export function DeviceSendDialog({
   deviceId: string | null;
   onClose: () => void;
 }) {
-  const { t } = useDesign();
+  const { t, language } = useDesign();
   const device = useStore((state) => state.devices.find((item) => item.id === deviceId) ?? null);
   const companies = useStore((state) => state.companies);
   const send = useStore((state) => state.send);
   const [step, setStep] = useState<0 | 1 | 2>(0);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>(companies[0]?.id ?? "");
   const [problem, setProblem] = useState("");
+  const [saving, setSaving] = useState(false);
 
   if (!device) {
     return <p className="today-empty">{t("notReady")}</p>;
@@ -351,11 +352,12 @@ export function DeviceSendDialog({
 
   const currentDevice: Device = device;
 
-  async function confirmSend() {
-    if (!selectedCompanyId) return;
+  async function confirmSend(print = false) {
+    if (!selectedCompanyId || saving) return;
+    setSaving(true);
     const company = companies.find((item) => item.id === selectedCompanyId);
     send(currentDevice.id, selectedCompanyId, problem || "Diagnostic à confirmer");
-    if (company) {
+    if (company && print) {
       await generateDevicePdfs(currentDevice, company, problem || "Diagnostic à confirmer");
     }
     onClose();
@@ -364,9 +366,9 @@ export function DeviceSendDialog({
   return (
     <div className="send-sheet">
       <div className="send-stepper">
-        <span className={step === 0 ? "step-pill active" : "step-pill"}>1. Sélection</span>
-        <span className={step === 1 ? "step-pill active" : "step-pill"}>2. Prestataire</span>
-        <span className={step === 2 ? "step-pill active" : "step-pill"}>3. Description</span>
+        <span className={step === 0 ? "step-pill active" : "step-pill"}>1. {t("selection")}</span>
+        <span className={step === 1 ? "step-pill active" : "step-pill"}>2. {t("vendor")}</span>
+        <span className={step === 2 ? "step-pill active" : "step-pill"}>3. {t("review")}</span>
       </div>
       {step === 0 && (
         <>
@@ -388,7 +390,7 @@ export function DeviceSendDialog({
       {step === 1 && (
         <div className="vendor-list">
           {companies.map((company) => (
-            <button
+            <Button variant="soft"
               key={company.id}
               type="button"
               className={selectedCompanyId === company.id ? "vendor-card active" : "vendor-card"}
@@ -398,35 +400,39 @@ export function DeviceSendDialog({
               }}
             >
               <strong>{company.name}</strong>
-              <span>{company.deadlineDays} jours</span>
+              <span>{company.deadlineDays} {t("dayUnit")}</span>
               <small>{company.contract === "warranty" ? "Garantie" : company.contract === "contract" ? "Contrat" : "Sans contrat"}</small>
-            </button>
+            </Button>
           ))}
         </div>
       )}
       {step === 2 && (
         <>
           <div className="detail-row">
-            <span>Prestataire</span>
+            <span>{t("company")}</span>
             <strong>{companies.find((company) => company.id === selectedCompanyId)?.name}</strong>
           </div>
           <label className="problem-wrap">
-            <span>Problème</span>
+            <span>{t("problem")}</span>
             <textarea
               value={problem}
               onChange={(event) => setProblem(event.target.value)}
-              placeholder="Décrivez le problème technique"
+              placeholder={t("problem")}
               rows={6}
             />
           </label>
+          <small className="text-muted-foreground">{t('patientWarning')}</small>
+          <div className="detail-row"><span>{t('expected')}</span><strong>{formatDate(expectedReturn(new Date(), companies.find(c => c.id === selectedCompanyId)?.deadlineDays ?? 0))}</strong></div>
+          <p className="dialog-notice">{t('pdfDraft')}</p>
           <div className="device-detail-actions">
             <Button variant="soft" size="touch" onClick={() => setStep(1)}>
               {t("back")}
             </Button>
-            <Button variant="hub" size="touch" onClick={() => void confirmSend()}>
+            <Button variant="hub" size="touch" disabled={saving} onClick={() => void confirmSend()}>
               <FileText aria-hidden="true" />
-              Confirmer
+              {t("saveOnly")}
             </Button>
+            <Button variant="soft" size="touch" disabled={saving} onClick={() => void confirmSend(true)}>{t("savePrint")}</Button>
           </div>
         </>
       )}

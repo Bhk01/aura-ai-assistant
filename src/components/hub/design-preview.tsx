@@ -37,7 +37,9 @@ import {
 } from "@/logic/local-lock";
 import { createAlertTriggers, playHospitalChime, SOUND_CHIMES } from "@/logic/audio";
 import { awayList, useStore } from "@/logic/store";
-import printer from "@/assets/printer.png";
+import { CompanyList, PaperList } from "./record-lists";
+import { AssistantPanel } from "./assistant-panel";
+import { dueTomorrowReminders, withinQuietHours } from "@/logic/reminders";
 
 type Dialog =
   | "hub"
@@ -48,42 +50,40 @@ type Dialog =
   | "inventory"
   | "send"
   | "later"
+  | "companies"
+  | "papers"
   | "reminder"
   | null;
 type LockMode = "setup" | "locked" | null;
 type SpeechRecognitionLike = {
-  lang: string;
-  continuous: boolean;
-  interimResults: boolean;
+  lang: string; continuous: boolean; interimResults: boolean;
   onresult: ((event: { results: ArrayLike<{ isFinal: boolean; 0: { transcript: string } }> }) => void) | null;
   onerror: ((event: { error?: string }) => void) | null;
-  onend: (() => void) | null;
-  start: () => void;
-  stop: () => void;
+  onend: (() => void) | null; start: () => void; stop: () => void;
 };
-
-declare global {
-  interface Window {
-    SpeechRecognition?: { new (): SpeechRecognitionLike };
-    webkitSpeechRecognition?: { new (): SpeechRecognitionLike };
-  }
-}
-function Brand({ welcome = false }: { welcome?: boolean }) {
+declare global { interface Window {
+  SpeechRecognition?: { new (): SpeechRecognitionLike };
+  webkitSpeechRecognition?: { new (): SpeechRecognitionLike };
+} }
+function Brand({ welcome = false, onThank }: { welcome?: boolean; onThank?: () => void }) {
+  const hold = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clear = () => { if (hold.current) clearTimeout(hold.current); };
+  useEffect(() => clear, []);
   return (
-    <div className={`brand ${welcome ? "welcome-brand" : ""}`} aria-label="S-IT Hub">
+    <div className={`brand ${welcome ? "welcome-brand" : ""}`} aria-label="S-IT Hub" onPointerDown={() => { if (onThank) hold.current = setTimeout(onThank, 800); }} onPointerUp={clear} onPointerLeave={clear} onPointerCancel={clear} onDoubleClick={onThank}>
       <span>S-IT HUB</span>
       <i className="brand-dot" />
     </div>
   );
 }
 
-function SoundStudio() {
+function SoundStudio({ enabled, onEnabledChange }: { enabled: boolean; onEnabledChange: (value: boolean) => void }) {
   const { t } = useDesign();
   const devices = useStore((state) => state.devices);
   const companies = useStore((state) => state.companies);
   const [selectedChime, setSelectedChime] = useState(0);
   const [volume, setVolume] = useState(52);
-  const [remindersEnabled, setRemindersEnabled] = useState(true);
+
   const [lastPlayed, setLastPlayed] = useState<number | null>(null);
 
   const alerts = useMemo(
@@ -116,7 +116,7 @@ function SoundStudio() {
         <label>{t("volume")}</label>
         <input
           type="range"
-          min="10"
+          min="0"
           max="100"
           value={volume}
           onChange={(event) => setVolume(Number(event.target.value))}
@@ -127,8 +127,8 @@ function SoundStudio() {
         <Button variant="hub" size="touch" onClick={() => void handleChime()}>
           {t("playChime")}
         </Button>
-        <Button variant="soft" size="touch" onClick={() => setRemindersEnabled((value) => !value)}>
-          {remindersEnabled ? t("enableReminders") : t("reminderReady")}
+        <Button variant="soft" size="touch" onClick={() => onEnabledChange(!enabled)} aria-pressed={enabled}>
+          {enabled ? t("remindersOff") : t("enableReminders")}
         </Button>
       </div>
       <div className="hub-voice-output">
@@ -138,7 +138,7 @@ function SoundStudio() {
             {alerts.map((alert) => (
               <li key={alert.id}>
                 <span>{alert.companyName}</span>
-                <strong>{alert.daysUntil} j</strong>
+                <strong>{alert.daysUntil} {t("dayUnit")}</strong>
               </li>
             ))}
           </ul>
@@ -227,7 +227,11 @@ function PreviewDialog({
   notificationMessages,
   onOpenDevice,
   onOpenSend,
+  remindersEnabled,
+  onRemindersChange,
 }: {
+  remindersEnabled: boolean;
+  onRemindersChange: (enabled: boolean) => void;
   dialog: Dialog;
   close: () => void;
   replay: () => void;
@@ -242,12 +246,6 @@ function PreviewDialog({
 }) {
   const { t, theme, setTheme, language, setLanguage } = useDesign();
   const [move, setMove] = useState<HubMove>("idle");
-  const [voiceEnabled, setVoiceEnabled] = useState(false);
-  const [voiceTranscript, setVoiceTranscript] = useState("");
-  const [voiceCaption, setVoiceCaption] = useState("");
-  const [autopilotActive, setAutopilotActive] = useState(false);
-  const [autopilotStep, setAutopilotStep] = useState(0);
-  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const reduced = useReducedMotion();
   useEffect(() => {
     if (move === "idle" || move === "quiet") return;
@@ -272,72 +270,9 @@ function PreviewDialog({
     send: "send",
     later: "sample",
     reminder: "reminderTitle",
+    companies: "companies",
+    papers: "papers",
   };
-  const hubSteps = [
-    { id: "today-hero", label: language === "fr" ? "Vérifier les retards" : language === "ar" ? "مراجعة التأخيرات" : "Review overdue items" },
-    { id: "devices-nav", label: language === "fr" ? "Ouvrir l’inventaire" : language === "ar" ? "فتح الجرد" : "Open the inventory" },
-    { id: "device-send", label: language === "fr" ? "Démarrer l’envoi" : language === "ar" ? "بدء الإرسال" : "Start a repair dispatch" },
-    { id: "paper-docs", label: language === "fr" ? "Préparer les documents" : language === "ar" ? "إعداد المستندات" : "Prepare the documents" },
-  ];
-
-  useEffect(() => {
-    if (!autopilotActive) return;
-    const timer = window.setInterval(() => {
-      setAutopilotStep((step) => (step + 1) % hubSteps.length);
-    }, 2200);
-    return () => window.clearInterval(timer);
-  }, [autopilotActive, hubSteps.length]);
-
-  useEffect(() => {
-    const activeId = hubSteps[autopilotStep]?.id;
-    document.querySelectorAll("[data-hub-id]").forEach((node) => {
-      node.classList.toggle("hub-target-active", node.getAttribute("data-hub-id") === activeId);
-    });
-  }, [autopilotStep, hubSteps, dialog]);
-
-  const stopVoice = () => {
-    recognitionRef.current?.stop();
-    recognitionRef.current = null;
-    setVoiceEnabled(false);
-  };
-
-  const startVoice = () => {
-    const SpeechRecognitionCtor =
-      window.SpeechRecognition ?? (window as typeof window & { webkitSpeechRecognition?: { new (): SpeechRecognitionLike } }).webkitSpeechRecognition;
-    if (!SpeechRecognitionCtor) {
-      setVoiceCaption(language === "fr" ? "Reconnaissance vocale indisponible" : language === "ar" ? "التعرف الصوتي غير متاح" : "Voice recognition is unavailable");
-      return;
-    }
-    const recognition = new SpeechRecognitionCtor();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = language === "ar" ? "ar-TN" : language === "fr" ? "fr-FR" : "en-US";
-    recognition.onresult = (event) => {
-      let transcript = "";
-      let interim = "";
-      for (let index = 0; index < event.results.length; index += 1) {
-        const result = event.results[index] as { isFinal: boolean; 0?: { transcript?: string } };
-        const text = result?.[0]?.transcript ?? "";
-        if (result.isFinal) transcript += `${text} `;
-        else interim += `${text} `;
-      }
-      setVoiceTranscript(transcript.trim());
-      setVoiceCaption(interim.trim() || transcript.trim() || "");
-    };
-    recognition.onerror = (event) => {
-      setVoiceCaption(event.error ?? "voice error");
-      setVoiceEnabled(false);
-    };
-    recognition.onend = () => {
-      setVoiceEnabled(false);
-      recognitionRef.current = null;
-    };
-    recognitionRef.current = recognition;
-    setVoiceEnabled(true);
-    setVoiceCaption("");
-    recognition.start();
-  };
-
   if (!dialog) return null;
   return (
     <motion.div
@@ -367,84 +302,10 @@ function PreviewDialog({
         >
           <X />
         </Button>
-        {dialog === "hub" && <Hub move={move} className="modal-hub" />}
         <h2 id="dialog-title">{t(titles[dialog])}</h2>
-        {dialog === "hub" && (
-          <>
-            <p>{t("hubPose")}</p>
-            <div className="pose-controls">
-              {(["idle", "wave", "think", "celebrate", "quiet"] as HubMove[]).map((pose) => (
-                <Button
-                  key={pose}
-                  variant={pose === move ? "hub" : "soft"}
-                  size="touch"
-                  onClick={() => setMove(pose)}
-                  aria-pressed={pose === move}
-                >
-                  {t(pose)}
-                </Button>
-              ))}
-            </div>
-            <div className="hub-assistant-panel">
-              <div className="hub-assistant-controls">
-                <Button variant="hub" size="touch" onClick={() => (voiceEnabled ? stopVoice() : startVoice())}>
-                  {voiceEnabled ? (language === "fr" ? "Arrêter" : language === "ar" ? "إيقاف" : "Stop") : (language === "fr" ? "Parler" : language === "ar" ? "تحدث" : "Speak")}
-                </Button>
-                <select
-                  className="auto-lock-select"
-                  value={language}
-                  onChange={(event) => setLanguage(event.target.value as Language)}
-                >
-                  <option value="fr">FR</option>
-                  <option value="ar">AR</option>
-                  <option value="en">EN</option>
-                </select>
-              </div>
-              <div className="hub-voice-output" aria-live="polite">
-                <strong>{language === "fr" ? "Transcription" : language === "ar" ? "النص" : "Transcript"}</strong>
-                <p>{voiceCaption || voiceTranscript || (language === "fr" ? "Prêt pour le micro." : language === "ar" ? "جاهز للميكروفون." : "Ready for voice input.")}</p>
-              </div>
-            </div>
-            <div className="hub-autopilot">
-              <div className="hub-autopilot-header">
-                <strong>{language === "fr" ? "Autopilot Hub" : language === "ar" ? "مساعد Hub" : "Hub Autopilot"}</strong>
-                <Button
-                  variant="hub"
-                  size="touch"
-                  className="hub-stop-button"
-                  onClick={() => setAutopilotActive(false)}
-                >
-                  {language === "fr" ? "Stop" : language === "ar" ? "إيقاف" : "Stop"}
-                </Button>
-              </div>
-              <ol className="hub-autopilot-list">
-                {hubSteps.map((step, index) => (
-                  <li
-                    key={step.id}
-                    className={autopilotStep === index ? "hub-autopilot-step active" : "hub-autopilot-step"}
-                    data-hub-id={step.id}
-                  >
-                    {index + 1}. {step.label}
-                  </li>
-                ))}
-              </ol>
-              <Button variant="soft" size="touch" onClick={() => setAutopilotActive((value) => !value)}>
-                {autopilotActive
-                  ? language === "fr"
-                    ? "Pause du guide"
-                    : language === "ar"
-                      ? "إيقاف التوجيه"
-                      : "Pause guidance"
-                  : language === "fr"
-                    ? "Démarrer le guide"
-                    : language === "ar"
-                      ? "بدء التوجيه"
-                      : "Start guidance"}
-              </Button>
-            </div>
-            <div className="dialog-notice">{t("hubDemo")}</div>
-          </>
-        )}
+        {dialog === "hub" && <AssistantPanel onOpenDevice={onOpenDevice} />}
+        {dialog === "companies" && <CompanyList onOpenDevice={onOpenDevice} />}
+        {dialog === "papers" && <PaperList onOpenDevice={onOpenDevice} />}
         {dialog === "settings" && (
           <>
             <div className="settings-row">
@@ -502,17 +363,6 @@ function PreviewDialog({
         {dialog === "notifications" && (
           <>
             <p className="dialog-notice">{t("soundStudioHint")}</p>
-            <Button
-              variant="hub"
-              size="touch"
-              onClick={() => {
-                if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "default") {
-                  void Notification.requestPermission();
-                }
-              }}
-            >
-              {t("enableReminders")}
-            </Button>
             {notificationMessages.length > 0 && (
               <div className="hub-voice-output">
                 <strong>{t("reminderSchedule")}</strong>
@@ -523,7 +373,7 @@ function PreviewDialog({
                 </ul>
               </div>
             )}
-            <SoundStudio />
+            <SoundStudio enabled={remindersEnabled} onEnabledChange={onRemindersChange} />
           </>
         )}
         {dialog === "inventory" && (
@@ -545,7 +395,7 @@ function PreviewDialog({
           <>
             <p>{t("quickHint")}</p>
             <div className="gallery-tools">
-              <Button variant="soft" size="touch" disabled>
+              <Button variant="soft" size="touch" onClick={() => onOpenDevice(useStore.getState().devices.find(d => d.status === "service")?.id ?? "")} >
                 <Send />
                 {t("send")}
               </Button>
@@ -558,35 +408,6 @@ function PreviewDialog({
           </>
         )}
         {dialog === "later" && <p>{t("notReady")}</p>}
-        {dialog === "device" && (
-          <>
-            <div className="detail-image">
-              <img src={printer} width={1024} height={1024} alt={t("printer")} />
-            </div>
-            <h3>{t("printer")}</h3>
-            <span className="status">
-              <ShieldAlert />
-              {t("critical")}
-            </span>
-            {(
-              [
-                ["inventory", "INV-0402"],
-                ["serial", "DEMO-SN-0402"],
-                ["department", t("critical")],
-                ["company", "Nimbus Service"],
-                ["expected", t("previewDate")],
-              ] as [CopyKey, string][]
-            ).map(([key, value]) => (
-              <div className="detail-row" key={key}>
-                <span>{t(key)}</span>
-                <strong>{value}</strong>
-              </div>
-            ))}
-            <div className="dialog-notice">
-              {t("demo")} · {t("sample")}
-            </div>
-          </>
-        )}
         {dialog === "reminder" && (
           <>
             <p className="reminder-draft">{t("reminderDraft")}</p>
@@ -598,11 +419,11 @@ function PreviewDialog({
   );
 }
 
-function Header({ open }: { open: (dialog: Dialog) => void }) {
+function Header({ open, onThank }: { open: (dialog: Dialog) => void; onThank: () => void }) {
   const { t } = useDesign();
   return (
     <header className="app-header">
-      <Brand />
+      <Brand onThank={onThank} />
       <div className="header-center">
         <Building2 />
         <div>{t("hospital")}</div>
@@ -661,11 +482,11 @@ function BottomNav({ open }: { open: (dialog: Dialog) => void }) {
       >
         <Hub className="nav-hub-character" />
       </Button>
-      <Button variant="tool" className="nav-link" onClick={() => open("later")} data-hub-id="companies-nav">
+      <Button variant="tool" className="nav-link" onClick={() => open("companies")} data-hub-id="companies-nav">
         <Building2 aria-hidden="true" />
         <span>{t("companies")}</span>
       </Button>
-      <Button variant="tool" className="nav-link" onClick={() => open("later")} data-hub-id="paper-docs">
+      <Button variant="tool" className="nav-link" onClick={() => open("papers")} data-hub-id="paper-docs">
         <FileText aria-hidden="true" />
         <span>{t("papers")}</span>
       </Button>
@@ -786,6 +607,10 @@ function PreviewContent({ gallery }: { gallery: boolean }) {
   const [lockMode, setLockMode] = useState<LockMode>(null);
   const [lockSettings, setLockSettings] = useState<LockSettings | null>(null);
   const [sessionActive, setSessionActive] = useState(false);
+  const { t } = useDesign();
+  const [thank, setThank] = useState(false);
+  const [remindersEnabled, setRemindersEnabled] = useState(false);
+  useEffect(() => { setRemindersEnabled(localStorage.getItem("hub-reminders") === "true"); }, []);
   const [notificationMessages, setNotificationMessages] = useState<string[]>([]);
   const devices = useStore((state) => state.devices);
   const companies = useStore((state) => state.companies);
@@ -845,38 +670,25 @@ function PreviewContent({ gallery }: { gallery: boolean }) {
   }, [lockMode, lockSettings, sessionActive]);
 
   useEffect(() => {
-    if (!sessionActive || lockMode !== null) return;
-
-    const timers: number[] = [];
-    alerts.forEach((alert, index) => {
-      const triggerMs = alert.expectedReturn.getTime() - Date.now() - 2 * 24 * 60 * 60 * 1000;
-      if (triggerMs <= 0) return;
-
-      const timer = window.setTimeout(() => {
-        setNotificationMessages((messages) => {
-          const next = [
-            `${alert.companyName} • ${alert.daysUntil} jours`,
-            ...messages.filter((message) => message !== `${alert.companyName} • ${alert.daysUntil} jours`),
-          ];
-          return next.slice(0, 3);
-        });
-        const chimeIndex = (index + alert.daysUntil) % SOUND_CHIMES.length;
-        void playHospitalChime(chimeIndex, 0.32);
-
-        if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
-          new Notification("Retour attendu", {
-            body: `${alert.companyName} • ${alert.message}`,
-          });
-        }
-      }, Math.min(triggerMs, 30 * 60_000));
-
-      timers.push(timer);
-    });
-
-    return () => {
-      timers.forEach((timer) => window.clearTimeout(timer));
+    if (!sessionActive || lockMode !== null || !remindersEnabled) return;
+    const delivered = new Set<string>(JSON.parse(localStorage.getItem('hub-delivered') || '[]'));
+    const check = () => {
+      const now = new Date();
+      if (withinQuietHours(now)) return;
+      for (const alert of dueTomorrowReminders(devices, companies, now)) {
+        if (delivered.has(alert.id)) continue;
+        delivered.add(alert.id);
+        localStorage.setItem('hub-delivered', JSON.stringify([...delivered]));
+        const message = `${alert.device.inventory} · ${alert.company.name} · ${t('expected')}`;
+        setNotificationMessages(messages => [message, ...messages].slice(0, 5));
+        void playHospitalChime(0, 0.32);
+      }
     };
-  }, [alerts, lockMode, sessionActive]);
+    check();
+    const timer = window.setInterval(check, 60_000);
+    window.addEventListener('focus', check);
+    return () => { clearInterval(timer); window.removeEventListener('focus', check); };
+  }, [devices, companies, lockMode, sessionActive, remindersEnabled, t]);
 
   function changeAutoLock(minutes: LockSettings["autoLockMinutes"]) {
     const updated = saveAutoLockMinutes(minutes);
@@ -885,7 +697,7 @@ function PreviewContent({ gallery }: { gallery: boolean }) {
 
   return (
     <>
-      <Header open={setDialog} />
+      <Header open={setDialog} onThank={() => setThank(true)} />
       {gallery ? (
         <Gallery open={setDialog} />
       ) : (
@@ -903,6 +715,8 @@ function PreviewContent({ gallery }: { gallery: boolean }) {
       <AnimatePresence>
         {dialog && (
           <PreviewDialog
+            remindersEnabled={remindersEnabled}
+            onRemindersChange={enabled => { setRemindersEnabled(enabled); localStorage.setItem("hub-reminders", String(enabled)); }}
             dialog={dialog}
             close={() => {
               setDialog(null);
@@ -931,6 +745,12 @@ function PreviewContent({ gallery }: { gallery: boolean }) {
           />
         )}
       </AnimatePresence>
+      {thank && <div className="thank-scene" role="dialog" aria-modal="true" aria-label={t('thank')}>
+        <Button variant="tool" size="tool" className="modal-close" onClick={() => setThank(false)} aria-label={t('close')}><X /></Button>
+        <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>{t('thank')}<br />ilhem letaief.</motion.h1>
+        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>{t('thankLine')}</motion.p>
+        <Hub move="celebrate" className="welcome-hub" /><p>{t('authors')}</p>
+      </div>}
       <AnimatePresence>{welcome && <Welcome onEnter={enterApp} />}</AnimatePresence>
       {lockMode && (
         <PinGate
