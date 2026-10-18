@@ -12,7 +12,7 @@ export function AssistantPanel({ onOpenDevice }: { onOpenDevice: (id: string) =>
   const [answer, setAnswer] = useState('');
   const [busy, setBusy] = useState(false);
   const request = useRef<AbortController | null>(null);
-  const recognition = useRef<SpeechRecognitionLike | null>(null);
+  const recognition = useRef<{ stop: () => void } | null>(null);
   const devices = useStore(s => s.devices);
   const companies = useStore(s => s.companies);
   const late = awayList(devices, companies).filter(d => d.late);
