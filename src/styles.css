@@ -248,3 +248,36 @@ h1,h2,h3,.display { font-family: var(--font-display); }
  .pin-card { padding:28px 22px; border-radius:28px; }.pin-card h1 { font-size:28px; }.sticky-late-count { top:80px; min-height:48px; }
 }
 @media(min-width:601px) and (max-width:900px) { .sticky-late-count { top:86px; } }
+
+/* Reviewed workflow surfaces share the original token palette. */
+.assistant-panel form { display:grid; gap:12px; }
+.assistant-input { width:100%; border:1px solid var(--border); background:var(--background); color:var(--foreground); border-radius:16px; padding:14px; font:inherit; resize:vertical; }
+.assistant-panel .hub-assistant-controls { flex-wrap:wrap; }
+.assistant-answer { white-space:pre-wrap; overflow-wrap:anywhere; }
+.assistant-results,.record-list { display:grid; gap:12px; }
+.assistant-results button { justify-content:space-between; gap:12px; }
+.record-section { border-bottom:1px solid var(--border); padding:16px 0; display:grid; gap:12px; }
+.record-section h3 { margin:0; }
+.paper-record { height:auto; min-height:96px; align-items:flex-start; flex-direction:column; white-space:normal; text-align:start; }
+.paper-record span,.paper-record time { font-size:12px; color:var(--muted-foreground); }
+.thank-scene { position:fixed; inset:0; z-index:120; background:var(--background); display:flex; flex-direction:column; align-items:center; justify-content:center; padding:28px; text-align:center; overflow:auto; }
+.thank-scene h1 { font-size:40px; margin:0; }
+.thank-scene p { max-width:460px; line-height:1.6; }
+.inventory-card { height:auto; white-space:normal; text-align:start; min-width:0; }
+.inventory-search input { min-width:0; width:100%; }
+.inventory-copy,.inventory-meta { overflow-wrap:anywhere; }
+.detail-row strong { text-align:end; overflow-wrap:anywhere; min-width:0; }
+.csv-review { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+@media(max-width:600px) {
+ .inventory-row { flex-direction:column; align-items:stretch; }
+ .inventory-actions { flex-direction:row; }
+ .inventory-actions button { flex:1; }
+ .inventory-toolbar { flex-wrap:wrap; }
+ .inventory-search { min-width:180px; }
+ .inventory-card { padding:12px; }
+ .inventory-meta { max-width:100px; }
+ .modal h2 { padding-inline-end:34px; }
+ .welcome-content { max-height:calc(100dvh - 40px); overflow:auto; }
+ .welcome-hub { height:190px; }
+ .welcome-hospital { margin-top:24px; }
+}

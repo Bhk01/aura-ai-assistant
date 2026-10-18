@@ -37,6 +37,7 @@ import {
 } from "@/logic/local-lock";
 import { createAlertTriggers, playHospitalChime, SOUND_CHIMES } from "@/logic/audio";
 import { awayList, useStore } from "@/logic/store";
+import { CompanyList, PaperList } from "./record-lists";
 import { AssistantPanel } from "./assistant-panel";
 import { dueTomorrowReminders, withinQuietHours } from "@/logic/reminders";
 
