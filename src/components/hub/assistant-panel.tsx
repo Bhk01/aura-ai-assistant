@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Mic, Send, Square } from "lucide-react";
+import { Mic, Send, Square, Volume2, VolumeX } from "lucide-react";
+import { streamSpeech } from "@/hub/stream-speech";
 import { Button } from "@/components/ui/button";
 import { useDesign } from "@/logic/design-context";
 import { awayList, useStore } from "@/logic/store";
@@ -11,6 +12,32 @@ export function AssistantPanel({ onOpenDevice }: { onOpenDevice: (id: string) =>
   const [input, setInput] = useState("");
   const [answer, setAnswer] = useState("");
   const [busy, setBusy] = useState(false);
+  const [question, setQuestion] = useState("");
+  const [speaking, setSpeaking] = useState(false);
+  const [voiceOn, setVoiceOn] = useState(true);
+  const voice = useRef<AbortController | null>(null);
+  function stopVoice() {
+    voice.current?.abort();
+    voice.current = null;
+    setSpeaking(false);
+  }
+  async function speak(text: string) {
+    stopVoice();
+    if (!text.trim()) return;
+    const controller = new AbortController();
+    voice.current = controller;
+    setSpeaking(true);
+    try {
+      await streamSpeech("/api/speech", text.slice(0, 1500), controller.signal);
+    } catch {
+      /* voice is optional; the written answer stays visible */
+    } finally {
+      if (voice.current === controller) {
+        voice.current = null;
+        setSpeaking(false);
+      }
+    }
+  }
   const request = useRef<AbortController | null>(null);
   const recognition = useRef<{ stop: () => void } | null>(null);
   const devices = useStore((s) => s.devices);
@@ -20,6 +47,7 @@ export function AssistantPanel({ onOpenDevice }: { onOpenDevice: (id: string) =>
     () => () => {
       request.current?.abort();
       recognition.current?.stop();
+      voice.current?.abort();
     },
     [],
   );
@@ -46,8 +74,11 @@ export function AssistantPanel({ onOpenDevice }: { onOpenDevice: (id: string) =>
     }
     const controller = new AbortController();
     request.current = controller;
+    stopVoice();
     setBusy(true);
     setAnswer("");
+    setQuestion(input.trim());
+    setInput("");
     try {
       const response = await fetch("/api/hub", {
         method: "POST",
@@ -82,7 +113,9 @@ export function AssistantPanel({ onOpenDevice }: { onOpenDevice: (id: string) =>
       } finally {
         reader.releaseLock();
       }
-      if (!text.trim()) setAnswer(t("assistantEmpty"));
+      const clean = text.replace(/\u0000ERROR:/g, "").trim();
+      if (!clean) setAnswer(t("assistantEmpty"));
+      else if (voiceOn) void speak(clean);
     } catch (error) {
       if (!controller.signal.aborted)
         setAnswer(error instanceof Error ? error.message : t("error"));
@@ -91,9 +124,52 @@ export function AssistantPanel({ onOpenDevice }: { onOpenDevice: (id: string) =>
       request.current = null;
     }
   }
+  const move = busy ? "think" : speaking ? "wave" : answer ? "celebrate" : "idle";
   return (
     <div className="assistant-panel">
-      <Hub move={busy ? "think" : "idle"} className="modal-hub" />
+      <div className={`assistant-stage${busy ? " is-thinking" : ""}${speaking ? " is-speaking" : ""}`}>
+        <Hub move={move} className="modal-hub" />
+        <span className="assistant-ring" aria-hidden />
+      </div>
+      {(question || answer || busy) && (
+        <div className="assistant-thread" aria-live="polite">
+          {question && <p className="assistant-bubble is-user">{question}</p>}
+          <div className="assistant-bubble is-hub" role="status">
+            <strong className="assistant-name">Hub</strong>
+            {answer ? (
+              <p>{answer}</p>
+            ) : (
+              <span className="assistant-dots" aria-label="…">
+                <i />
+                <i />
+                <i />
+              </span>
+            )}
+            {answer && !busy && (
+              <div className="assistant-bubble-tools">
+                <Button
+                  variant="soft"
+                  size="tool"
+                  type="button"
+                  onClick={() => (speaking ? stopVoice() : void speak(answer))}
+                  aria-label={speaking ? t("assistantStop") : t("assistantVoice")}
+                >
+                  {speaking ? <Square /> : <Volume2 />}
+                </Button>
+                {speaking && (
+                  <span className="assistant-wave" aria-hidden>
+                    <i />
+                    <i />
+                    <i />
+                    <i />
+                    <i />
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -123,6 +199,19 @@ export function AssistantPanel({ onOpenDevice }: { onOpenDevice: (id: string) =>
           >
             <Mic />
           </Button>
+          <Button
+            variant="soft"
+            size="tool"
+            type="button"
+            onClick={() => {
+              if (voiceOn) stopVoice();
+              setVoiceOn(!voiceOn);
+            }}
+            aria-pressed={voiceOn}
+            aria-label={t("assistantVoice")}
+          >
+            {voiceOn ? <Volume2 /> : <VolumeX />}
+          </Button>
           {busy ? (
             <Button
               variant="soft"
@@ -146,25 +235,21 @@ export function AssistantPanel({ onOpenDevice }: { onOpenDevice: (id: string) =>
             variant="soft"
             size="touch"
             type="button"
-            onClick={() =>
+            onClick={() => {
+              setQuestion(t("assistantLocal"));
               setAnswer(
                 late
                   .map(
                     (d) => `${d.device.inventory} · ${d.company.name} · ${formatDate(d.expected)}`,
                   )
                   .join("\n") || t("noOverdue"),
-              )
-            }
+              );
+            }}
           >
             {t("assistantLocal")}
           </Button>
         </div>
       </form>
-      {answer && (
-        <p className="assistant-answer" role="status">
-          {answer}
-        </p>
-      )}
       <div className="assistant-results">
         {late.map((item) => (
           <Button
