@@ -1,8 +1,8 @@
-import { Canvas, useFrame } from '@react-three/fiber';
-import { useRef } from 'react';
-import * as THREE from 'three';
+import { Canvas, useFrame } from "@react-three/fiber";
+import { useRef } from "react";
+import * as THREE from "three";
 
-export type HubMove = 'idle' | 'wave' | 'think' | 'celebrate' | 'quiet';
+export type HubMove = "idle" | "wave" | "think" | "celebrate" | "quiet";
 function Character({ move, color, eyes }: { move: HubMove; color: string; eyes: string }) {
   const body = useRef<THREE.Group>(null);
   const leftArm = useRef<THREE.Mesh>(null);
@@ -63,24 +63,82 @@ function Character({ move, color, eyes }: { move: HubMove; color: string; eyes: 
       eyeGroup.current.position.x = THREE.MathUtils.damp(eyeGroup.current.position.x, pointer.x * 0.04, 8, delta);
     }
   });
-  return <group ref={body} rotation={[0, -0.08, 0]}>
-    <mesh><sphereGeometry args={[0.84, 64, 64]} /><meshPhysicalMaterial color={color} roughness={0.19} metalness={0.18} clearcoat={1} clearcoatRoughness={0.1} sheen={1} sheenColor={color} /></mesh>
-    <group ref={eyeGroup} position={[0, 0.06, 0.77]}>
-      {[-0.23, 0.23].map(x => <mesh key={x} position={[x, 0, 0]} scale={[0.075, 0.15, 0.065]}><sphereGeometry args={[1, 24, 24]} /><meshBasicMaterial color={eyes} /></mesh>)}
+  return (
+    <group ref={body} rotation={[0, -0.08, 0]}>
+      <mesh>
+        <sphereGeometry args={[0.84, 64, 64]} />
+        <meshPhysicalMaterial
+          color={color}
+          roughness={0.19}
+          metalness={0.18}
+          clearcoat={1}
+          clearcoatRoughness={0.1}
+          sheen={1}
+          sheenColor={color}
+        />
+      </mesh>
+      <group ref={eyeGroup} position={[0, 0.06, 0.77]}>
+        {[-0.23, 0.23].map((x) => (
+          <mesh key={x} position={[x, 0, 0]} scale={[0.075, 0.15, 0.065]}>
+            <sphereGeometry args={[1, 24, 24]} />
+            <meshBasicMaterial color={eyes} />
+          </mesh>
+        ))}
+      </group>
+      <mesh ref={leftArm} position={[-1.08, -0.2, 0.25]} scale={[0.2, 0.26, 0.18]}>
+        <sphereGeometry args={[1, 32, 32]} />
+        <meshPhysicalMaterial
+          color={color}
+          emissive={color}
+          emissiveIntensity={0.12}
+          roughness={0.24}
+          metalness={0.08}
+          clearcoat={1}
+          clearcoatRoughness={0.08}
+          sheen={0.8}
+          sheenColor={color}
+        />
+      </mesh>
+      <mesh ref={rightArm} position={[1.08, -0.2, 0.25]} scale={[0.2, 0.26, 0.18]}>
+        <sphereGeometry args={[1, 32, 32]} />
+        <meshPhysicalMaterial
+          color={color}
+          emissive={color}
+          emissiveIntensity={0.12}
+          roughness={0.24}
+          metalness={0.08}
+          clearcoat={1}
+          clearcoatRoughness={0.08}
+          sheen={0.8}
+          sheenColor={color}
+        />
+      </mesh>
     </group>
-    <mesh ref={leftArm} position={[-1.08, -0.2, 0.25]} scale={[0.2, 0.26, 0.18]}>
-      <sphereGeometry args={[1, 32, 32]} />
-      <meshPhysicalMaterial color={color} emissive={color} emissiveIntensity={0.12} roughness={0.24} metalness={0.08} clearcoat={1} clearcoatRoughness={0.08} sheen={0.8} sheenColor={color} />
-    </mesh>
-    <mesh ref={rightArm} position={[1.08, -0.2, 0.25]} scale={[0.2, 0.26, 0.18]}>
-      <sphereGeometry args={[1, 32, 32]} />
-      <meshPhysicalMaterial color={color} emissive={color} emissiveIntensity={0.12} roughness={0.24} metalness={0.08} clearcoat={1} clearcoatRoughness={0.08} sheen={0.8} sheenColor={color} />
-    </mesh>
-  </group>;
+  );
 }
-export default function HubScene({ move = 'idle', color, eyes, reduced }: { move?: HubMove; color: string; eyes: string; reduced: boolean }) {
-  return <Canvas camera={{ position: [0, 0, 3.8], fov: 39 }} dpr={[1, 2]} gl={{ alpha: true, antialias: true }} aria-hidden="true">
-    <ambientLight intensity={1.6} /><directionalLight position={[-3, 4, 5]} intensity={4} /><pointLight position={[3, -1, 2]} intensity={12} color={color} /><directionalLight position={[1, 3, -2]} intensity={3} />
-    <Character move={reduced ? 'quiet' : move} color={color} eyes={eyes} />
-  </Canvas>;
+export default function HubScene({
+  move = "idle",
+  color,
+  eyes,
+  reduced,
+}: {
+  move?: HubMove;
+  color: string;
+  eyes: string;
+  reduced: boolean;
+}) {
+  return (
+    <Canvas
+      camera={{ position: [0, 0, 3.8], fov: 39 }}
+      dpr={[1, 2]}
+      gl={{ alpha: true, antialias: true }}
+      aria-hidden="true"
+    >
+      <ambientLight intensity={1.6} />
+      <directionalLight position={[-3, 4, 5]} intensity={4} />
+      <pointLight position={[3, -1, 2]} intensity={12} color={color} />
+      <directionalLight position={[1, 3, -2]} intensity={3} />
+      <Character move={reduced ? "quiet" : move} color={color} eyes={eyes} />
+    </Canvas>
+  );
 }

@@ -61,13 +61,17 @@ export async function playHospitalChime(index: number, volume = 0.42): Promise<v
 
   const AudioCtor =
     window.AudioContext ||
-    (window as Window & typeof globalThis & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    (window as Window & typeof globalThis & { webkitAudioContext?: typeof AudioContext })
+      .webkitAudioContext;
 
   if (!AudioCtor) return;
 
   const context = new AudioCtor();
   const chime = SOUND_CHIMES[index % SOUND_CHIMES.length];
-  if (!chime) { await context.close(); return; }
+  if (!chime) {
+    await context.close();
+    return;
+  }
   await context.resume();
   const start = context.currentTime;
   const master = context.createGain();
