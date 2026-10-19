@@ -11,7 +11,11 @@ export function decodePCM(pending: Uint8Array, incoming: Uint8Array) {
   return { samples, pending: bytes.slice(usable) };
 }
 
-export async function streamSpeech(endpoint: string, text: string, signal?: AbortSignal): Promise<void> {
+export async function streamSpeech(
+  endpoint: string,
+  text: string,
+  signal?: AbortSignal,
+): Promise<void> {
   signal?.throwIfAborted();
   const context = new AudioContext({ sampleRate: 24000 });
   const sources = new Set<AudioBufferSourceNode>();
@@ -34,11 +38,13 @@ export async function streamSpeech(endpoint: string, text: string, signal?: Abor
       body: JSON.stringify({ text }),
       signal: controller.signal,
     });
-    if (!response.ok || !response.body) throw new Error(`TTS failed: ${response.status} ${await response.text()}`);
+    if (!response.ok || !response.body)
+      throw new Error(`TTS failed: ${response.status} ${await response.text()}`);
     const parser = createParser({
       onEvent(event) {
         const payload = JSON.parse(event.data) as { type: string; audio?: string; error?: unknown };
-        if (payload.type === "error" || payload.error) throw new Error(`Speech failed: ${event.data}`);
+        if (payload.type === "error" || payload.error)
+          throw new Error(`Speech failed: ${event.data}`);
         if (payload.type === "speech.audio.done") {
           completed = true;
           return;

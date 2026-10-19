@@ -29,11 +29,7 @@ import {
   DeviceInventoryDialog,
   DeviceSendDialog,
 } from "@/components/hub/device-workflow";
-import {
-  readLockSettings,
-  saveAutoLockMinutes,
-  type LockSettings,
-} from "@/logic/local-lock";
+import { readLockSettings, saveAutoLockMinutes, type LockSettings } from "@/logic/local-lock";
 import { createAlertTriggers, playHospitalChime, SOUND_CHIMES } from "@/logic/audio";
 import { useStore } from "@/logic/store";
 import { CompanyList, PaperList } from "./record-lists";
@@ -55,28 +51,54 @@ type Dialog =
   | null;
 type LockMode = "setup" | "locked" | null;
 type SpeechRecognitionLike = {
-  lang: string; continuous: boolean; interimResults: boolean;
-  onresult: ((event: { results: ArrayLike<{ isFinal: boolean; 0: { transcript: string } }> }) => void) | null;
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onresult:
+    | ((event: { results: ArrayLike<{ isFinal: boolean; 0: { transcript: string } }> }) => void)
+    | null;
   onerror: ((event: { error?: string }) => void) | null;
-  onend: (() => void) | null; start: () => void; stop: () => void;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
 };
-declare global { interface Window {
-  SpeechRecognition?: { new (): SpeechRecognitionLike };
-  webkitSpeechRecognition?: { new (): SpeechRecognitionLike };
-} }
+declare global {
+  interface Window {
+    SpeechRecognition?: { new (): SpeechRecognitionLike };
+    webkitSpeechRecognition?: { new (): SpeechRecognitionLike };
+  }
+}
 function Brand({ welcome = false, onThank }: { welcome?: boolean; onThank?: () => void }) {
   const hold = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const clear = () => { if (hold.current) clearTimeout(hold.current); };
+  const clear = () => {
+    if (hold.current) clearTimeout(hold.current);
+  };
   useEffect(() => clear, []);
   return (
-    <div className={`brand ${welcome ? "welcome-brand" : ""}`} aria-label="S-IT Hub" onPointerDown={() => { if (onThank) hold.current = setTimeout(onThank, 800); }} onPointerUp={clear} onPointerLeave={clear} onPointerCancel={clear} onDoubleClick={onThank}>
+    <div
+      className={`brand ${welcome ? "welcome-brand" : ""}`}
+      aria-label="S-IT Hub"
+      onPointerDown={() => {
+        if (onThank) hold.current = setTimeout(onThank, 800);
+      }}
+      onPointerUp={clear}
+      onPointerLeave={clear}
+      onPointerCancel={clear}
+      onDoubleClick={onThank}
+    >
       <span>S-IT HUB</span>
       <i className="brand-dot" />
     </div>
   );
 }
 
-function SoundStudio({ enabled, onEnabledChange }: { enabled: boolean; onEnabledChange: (value: boolean) => void }) {
+function SoundStudio({
+  enabled,
+  onEnabledChange,
+}: {
+  enabled: boolean;
+  onEnabledChange: (value: boolean) => void;
+}) {
   const { t } = useDesign();
   const devices = useStore((state) => state.devices);
   const companies = useStore((state) => state.companies);
@@ -126,7 +148,12 @@ function SoundStudio({ enabled, onEnabledChange }: { enabled: boolean; onEnabled
         <Button variant="hub" size="touch" onClick={() => void handleChime()}>
           {t("playChime")}
         </Button>
-        <Button variant="soft" size="touch" onClick={() => onEnabledChange(!enabled)} aria-pressed={enabled}>
+        <Button
+          variant="soft"
+          size="touch"
+          onClick={() => onEnabledChange(!enabled)}
+          aria-pressed={enabled}
+        >
           {enabled ? t("remindersOff") : t("enableReminders")}
         </Button>
       </div>
@@ -137,7 +164,9 @@ function SoundStudio({ enabled, onEnabledChange }: { enabled: boolean; onEnabled
             {alerts.map((alert) => (
               <li key={alert.id}>
                 <span>{alert.companyName}</span>
-                <strong>{alert.daysUntil} {t("dayUnit")}</strong>
+                <strong>
+                  {alert.daysUntil} {t("dayUnit")}
+                </strong>
               </li>
             ))}
           </ul>
@@ -384,17 +413,21 @@ function PreviewDialog({
         )}
         {dialog === "send" && <DeviceSendDialog deviceId={selectedDeviceId} onClose={close} />}
         {dialog === "device" && (
-          <DeviceDetailDialog
-            deviceId={selectedDeviceId}
-            onOpenSend={onOpenSend}
-            onClose={close}
-          />
+          <DeviceDetailDialog deviceId={selectedDeviceId} onOpenSend={onOpenSend} onClose={close} />
         )}
         {dialog === "quick" && (
           <>
             <p>{t("quickHint")}</p>
             <div className="gallery-tools">
-              <Button variant="soft" size="touch" onClick={() => onOpenDevice(useStore.getState().devices.find(d => d.status === "service")?.id ?? "")} >
+              <Button
+                variant="soft"
+                size="touch"
+                onClick={() =>
+                  onOpenDevice(
+                    useStore.getState().devices.find((d) => d.status === "service")?.id ?? "",
+                  )
+                }
+              >
                 <Send />
                 {t("send")}
               </Button>
@@ -481,11 +514,21 @@ function BottomNav({ open }: { open: (dialog: Dialog) => void }) {
       >
         <Hub className="nav-hub-character" />
       </Button>
-      <Button variant="tool" className="nav-link" onClick={() => open("companies")} data-hub-id="companies-nav">
+      <Button
+        variant="tool"
+        className="nav-link"
+        onClick={() => open("companies")}
+        data-hub-id="companies-nav"
+      >
         <Building2 aria-hidden="true" />
         <span>{t("companies")}</span>
       </Button>
-      <Button variant="tool" className="nav-link" onClick={() => open("papers")} data-hub-id="paper-docs">
+      <Button
+        variant="tool"
+        className="nav-link"
+        onClick={() => open("papers")}
+        data-hub-id="paper-docs"
+      >
         <FileText aria-hidden="true" />
         <span>{t("papers")}</span>
       </Button>
@@ -692,23 +735,26 @@ function PreviewContent({ gallery }: { gallery: boolean }) {
 
   useEffect(() => {
     if (!sessionActive || lockMode !== null || !remindersEnabled) return;
-    const delivered = new Set<string>(JSON.parse(localStorage.getItem('hub-delivered') || '[]'));
+    const delivered = new Set<string>(JSON.parse(localStorage.getItem("hub-delivered") || "[]"));
     const check = () => {
       const now = new Date();
       if (withinQuietHours(now)) return;
       for (const alert of dueTomorrowReminders(devices, companies, now)) {
         if (delivered.has(alert.id)) continue;
         delivered.add(alert.id);
-        localStorage.setItem('hub-delivered', JSON.stringify([...delivered]));
-        const message = `${alert.device.inventory} · ${alert.company.name} · ${t('expected')}`;
-        setNotificationMessages(messages => [message, ...messages].slice(0, 5));
+        localStorage.setItem("hub-delivered", JSON.stringify([...delivered]));
+        const message = `${alert.device.inventory} · ${alert.company.name} · ${t("expected")}`;
+        setNotificationMessages((messages) => [message, ...messages].slice(0, 5));
         void playHospitalChime(0, 0.32);
       }
     };
     check();
     const timer = window.setInterval(check, 60_000);
-    window.addEventListener('focus', check);
-    return () => { clearInterval(timer); window.removeEventListener('focus', check); };
+    window.addEventListener("focus", check);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("focus", check);
+    };
   }, [devices, companies, lockMode, sessionActive, remindersEnabled, t]);
 
   if (!startupReady || startupError) {
@@ -748,7 +794,10 @@ function PreviewContent({ gallery }: { gallery: boolean }) {
         {sessionActive && dialog && (
           <PreviewDialog
             remindersEnabled={remindersEnabled}
-            onRemindersChange={enabled => { setRemindersEnabled(enabled); localStorage.setItem("hub-reminders", String(enabled)); }}
+            onRemindersChange={(enabled) => {
+              setRemindersEnabled(enabled);
+              localStorage.setItem("hub-reminders", String(enabled));
+            }}
             dialog={dialog}
             close={() => {
               setDialog(null);
@@ -777,12 +826,29 @@ function PreviewContent({ gallery }: { gallery: boolean }) {
           />
         )}
       </AnimatePresence>
-      {thank && sessionActive && <div className="thank-scene" role="dialog" aria-modal="true" aria-label={t('thank')}>
-        <Button variant="tool" size="tool" className="modal-close" onClick={() => setThank(false)} aria-label={t('close')}><X /></Button>
-        <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>{t('thank')}<br />ilhem letaief.</motion.h1>
-        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>{t('thankLine')}</motion.p>
-        <Hub move="celebrate" className="welcome-hub" /><p>{t('authors')}</p>
-      </div>}
+      {thank && sessionActive && (
+        <div className="thank-scene" role="dialog" aria-modal="true" aria-label={t("thank")}>
+          <Button
+            variant="tool"
+            size="tool"
+            className="modal-close"
+            onClick={() => setThank(false)}
+            aria-label={t("close")}
+          >
+            <X />
+          </Button>
+          <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+            {t("thank")}
+            <br />
+            ilhem letaief.
+          </motion.h1>
+          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>
+            {t("thankLine")}
+          </motion.p>
+          <Hub move="celebrate" className="welcome-hub" />
+          <p>{t("authors")}</p>
+        </div>
+      )}
       <AnimatePresence>{welcome && <Welcome onEnter={enterApp} />}</AnimatePresence>
       {lockMode && (
         <PinGate

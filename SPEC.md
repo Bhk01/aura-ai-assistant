@@ -1,6 +1,7 @@
 # S-IT Hub: build the whole app (design and logic)
 
 ## 0. How to start
+
 - Save this entire message as SPEC.md in the project root and re-read it at the start of every phase. Keep AGENTS.md short: it points to SPEC.md and repeats sections 2 and 3.
 - I am a student. Explain every step in plain words. After each phase, tell me exactly how to test it, then stop and wait for my OK. I will switch you between Plan mode and Build mode myself. Start in Plan mode: reply with a plan of the phases in section 16 and any questions you really need answered, then wait.
 - You can read and edit files and run commands. Do not assume tools exist: check node, git, java, adb and the Android SDK, and tell me exactly what to install.
@@ -10,7 +11,9 @@
 - If your model can look at images, judge the design from screenshots. If it cannot, tell me, and rely on automated checks plus my review.
 
 ## 1. The product
+
 PERSONALIZE (I fill these in before sending)
+
 - HER_FIRST_NAME = [ilhem letaief]
 - HOSPITAL_NAME = [Hôpital Universitaire Sahloul de Sousse]
 - OUR_NAMES = [Ibrahim Ghaouar x Med yassine ben rjab]
@@ -23,6 +26,7 @@ Another app, made by a classmate, records new problems and prints write-off pape
 Data: invented data only. No patient information anywhere.
 
 ## 2. MODE A: the design is locked
+
 1. Do not change layout, colors, fonts, spacing, icons, wording or animations in any screen or component file.
 2. Allowed edits inside screen files, and only these: replace fake data with data from a hook; connect an existing button or gesture to a real function; add stable data-hub-id attributes to interactive elements; pass new values as props.
 3. All new code goes in src/logic (data, services, hooks), src/native (phone features) and src/hub (assistant).
@@ -32,20 +36,24 @@ Data: invented data only. No patient information anywhere.
 7. Audit first and report: the framework, bundler and styling; every screen and component; a table of every feature marked Works, Fake or Missing; where the fake data lives; and anything that blocks Capacitor (it needs a package.json, a build output folder and an index.html with a head tag). Fix only what blocks the build, with no visual change.
 
 ## 3. MODE B: build the design to this quality bar (in Mode A, never fall below it)
+
 Ambition: the craft and personality of a top award-winning, personality-driven website: oversized confident type, one electric accent color on deep dark surfaces, motion that follows the finger and the scroll, playful details that make her smile. This describes a level of quality, not a look to copy. Invent an ORIGINAL identity. Do not imitate any real person, athlete, brand, website, logo, mascot or color scheme.
 No performance budget. Target a flagship Android phone and use rich effects freely: WebGL and shaders, real-time 3D, blur, glow, particles, 120 fps springs, large assets. Never lower visual quality to save speed or battery. The Reduce motion switch exists only as an accessibility setting.
 Bold but never noisy: it is used in a busy hospital, so clarity comes first.
 Review loop (mandatory for every screen):
+
 1. Build the design system first: tokens, type scale, and every component in every state, shown on a hidden page at /design.
 2. Build the screen. Take Playwright screenshots at 390 x 844 in dark and light, French and Arabic.
 3. Critique your own screenshots against this checklist: one clear focal point; hierarchy by size and weight; an 8 px grid; optical alignment; consistent radii; the type scale; text contrast of at least 4.5:1 (axe-core); touch targets of at least 48 px; Arabic fully mirrored; empty, loading and error states; motion timings that match the tokens; short, kind microcopy.
 4. Fix, and repeat at least twice. Only then move on.
 5. Record each round in docs/DESIGN_REVIEW.md with before and after screenshots and the checklist result.
 6. At each milestone, show me the key screens and ask my opinion before continuing.
-Bundle fonts with the app (for example with the @fontsource packages), never from a CDN, so everything looks identical offline.
+   Bundle fonts with the app (for example with the @fontsource packages), never from a CDN, so everything looks identical offline.
 
 ## 4. Tech stack
+
 Use this in Mode B. In Mode A keep the existing stack and add only what is missing.
+
 - React, TypeScript and Vite. Tailwind CSS. Motion (framer-motion) for springs and layout transitions; GSAP only where clearly better. Three.js through @react-three/fiber for Hub and the device illustrations (detailed SVG with lighting is an acceptable fallback).
 - State: Zustand. Languages: i18next with fr, ar and en files and right-to-left support. Local database: IndexedDB through Dexie.
 - Phone: Capacitor (current version), Android first. Official plugins for notifications, haptics, network, share, filesystem, preferences and status bar. Community plugins for the document scanner, text recognition and barcode scanning (ML Kit), speech recognition, text to speech and biometric login. Before adding any plugin, check that it exists, is maintained and works with this Capacitor version. If there are two good choices, ask me.
@@ -53,27 +61,30 @@ Use this in Mode B. In Mode A keep the existing stack and add only what is missi
 - PDFs built inside the app (pdf-lib or jsPDF). Tests: Playwright, Vitest, axe-core.
 
 ## 5. Identity (original)
+
 Name and mark
+
 - Wordmark: S-IT HUB in a heavy, wide display type. A small solid dot in ACCENT_COLOR orbits the wordmark once on open, then docks in the top corner and becomes the sync indicator. The dot is the brand, and it is Hub's seed.
 - Tagline (French): Chaque appareil. Chaque délai.
-Color (dark theme is the default)
+  Color (dark theme is the default)
 - Ink 950 #07090F background; Ink 900 #0D1220 surface; Ink 800 #151B2E raised card; Ink 700 #222A42 hairlines.
 - Text: Fog 100 #F3F5FB; secondary Fog 400 #A3ACC4.
 - Accent: ACCENT_COLOR with a soft glow (blurred, 30% opacity) behind key elements.
 - Status colors, always paired with an icon and a word: Late #FF4D5E, Critical #D7263D (slow pulse), Waiting or due soon #FFA63D, Done #34D399, Information #4DA3FF.
 - Light theme: Paper #F7F5FF background, white cards, Ink 900 text, accent darkened until it keeps at least 4.5:1 contrast on white. It must feel as punchy as the dark theme, because hospital corridors are bright.
-Type
+  Type
 - Display: Bricolage Grotesque ExtraBold, tracking -3%, line height 0.9 to 1.0. Body and UI: Inter. Arabic: Readex Pro at matching weights.
 - Scale: hero numeral 120, title 40, section 28, body 16, small 13, label 12 in capitals with +6% tracking.
-Shape and surface
+  Shape and surface
 - Cards radius 28, buttons fully rounded, chips radius 12, sheets 32 on the top corners, 1 px hairlines, faint film grain (4%), tab bar and top bars in blurred glass. Generous space, huge numerals, few boxes; let the type do the work.
-Imagery
+  Imagery
 - Soft-3D, matte device illustrations (printer, desktop PC, monitor, scanner, laptop) in one consistent three-quarter angle, dark body, thin accent rim light, made with real-time 3D or detailed SVG lighting. Use them on device cards, empty states and the hero of the Device page.
 - Icons: one rounded line-icon set, 2 px strokes.
-Motion language (springs)
+  Motion language (springs)
 - Snap: 120 ms ease-out for taps and presses (scale to 0.96). Glide: 280 ms ease-in-out for screen changes, with shared-element transitions from a list card to its page. Spring: stiffness 300, damping 22 for swipes, drags and sheets. Big reveal: 600 to 800 ms, only for signature moments, at most once per screen. Lists stagger by 40 ms. Reduce motion: every movement becomes a 150 ms crossfade.
 
 ## 6. Hub, the assistant character (original)
+
 - Look: a glowing, glass-like orb in the accent color, about 56 px on screen, with two small expressive eyes and no mouth. Arms, legs, wings and tools grow out of its body only when needed and melt back in, so it can walk, fly and carry things. Soft-3D, matte, thin rim light. Invent it from scratch: do not base Hub on any existing mascot, robot, animal or character.
 - Moves (each a named, reusable state): idle breathing and blinking; hover with a gentle bob; wave; walk on two stubby legs along the tab bar and across cards; fly with a small spark trail; land on a card; peek in from a screen edge; point; carry a device card or a paper; hold up a magnifying glass; think; speak; shrug; thumbs-up; celebrate and dance; sleep; dizzy; bow.
 - Where Hub appears: on every screen, in character with it: hatching on Open, sitting on the Today numeral and dancing at 00, peeking over the search bar, pointing at the status on the Device page, carrying the device on Send, flying the light bar on the Scanner, holding a magnifying glass on Papers, sleeping on the cloud when offline, dizzy on errors, bowing in the thank-you scene.
@@ -81,6 +92,7 @@ Motion language (springs)
 - Code: src/hub holds a Hub component with a state machine of the moves above and a small API: hub.play(move), hub.flyTo(dataHubId), hub.tap(dataHubId), hub.say(text, language), hub.sleep(), hub.wake(). Render it as a real-time 3D glass orb (transmission, glow) with limbs that grow from the body on springs, and flat eyes that blink and look toward the touch.
 
 ## 7. Signature moments (the wow)
+
 1. Open: the wordmark builds from stretched letters into place (700 ms). The accent dot is Hub: it orbits once, hatches into the character, waves, then flies to the top-right corner and shrinks back into a dot. A greeting types in: Bonjour HER_FIRST_NAME (name in the accent color). Then a PIN pad with big keys that dip and glow on press, and a fingerprint button.
 2. Today hero: a giant numeral shows how many devices are late (for example 02), counting up. While she scrolls, it shrinks into a sticky header (scroll-linked). Cards rise in with a stagger. Critical cards (Emergency, ICU, Operating Room) breathe with a slow rim glow (2.4 s). Never flash faster than 3 times a second.
 3. Swipe cards: dragging right reveals full-bleed green (Returned); dragging left reveals the accent color (Remind company). The icon grows near the threshold, a ripple fires at the threshold, the card exits on a spring and the list closes the gap.
@@ -95,7 +107,9 @@ Motion language (springs)
 12. Hub answers anything: Hub thinks, then answers any question in a clean card with a short spoken version; when unsure it shrugs and says so.
 
 ## 8. Screens (French is the main language)
+
 Bottom glass tab bar: Today, Devices, Companies, Papers. A raised round center button opens two actions: Send a device and Scan a paper. A round Hub button floats on every screen.
+
 1. Open and PIN (moment 1).
 2. Today: the hero numeral, then three lists: Late (red), Critical places waiting (Emergency, ICU, Operating Room, dark red with a slow pulse), Coming back this week (blue). Card: device icon and name, inventory number, department tag, company name, days late or days left. Sort critical first, then most days late. Swipe right = Returned, swipe left = Remind company, tap = open, long press = quick menu (call the company, open its papers). Pull down to sync. A cloud icon shows sync: green check = all sent, orange with a number = waiting, grey with a slash = offline; tap it for details and Send now. States: normal, all clear, offline (grey banner: Hors ligne: tout est enregistré sur le téléphone).
 3. Devices: search bar with typing, a mic and a barcode or QR scan; results update as she types and match inventory number, serial number, type, brand, department and company. Filter chips: status, department, company, Critical only. Rows: icon, name, inventory number, department, status chip. Import: choose a CSV with the columns inventory_no, serial_no, type, department, problem, reported_date; show a preview with counts of new and changed rows and ask before importing; never delete devices missing from the file.
@@ -112,7 +126,9 @@ Bottom glass tab bar: Today, Devices, Companies, Papers. A raised round center b
 14. Optional Board view: columns In office, At company, Ready for pickup, Back in service; drag a card between columns with a snap.
 
 ## 9. Data and rules
+
 Tables (every row has id made on the phone, created_at, updated_at, deleted_at):
+
 - departments: name, criticality (critical or standard)
 - devices: inventory_no, serial_no, type, brand, model, purchase_date, purchase_cost, department, status, notes
 - companies: name, contact_person, phone, whatsapp, email
@@ -123,8 +139,8 @@ Tables (every row has id made on the phone, created_at, updated_at, deleted_at):
 - users: name, role (admin or read-only)
 - waiting_list: what changed, when, tries, last_error
 - history_log: who, what, when
-Statuses: In office, At company, Ready for pickup, Back in service. Formats: dates day/month/year, digits 0-9, money in Tunisian dinars (TND) with 3 decimals.
-Rules, no hidden magic:
+  Statuses: In office, At company, Ready for pickup, Back in service. Formats: dates day/month/year, digits 0-9, money in Tunisian dinars (TND) with 3 decimals.
+  Rules, no hidden magic:
 - Expected return date = send date plus the contract deadline in business days (which days are the weekend is a setting).
 - Overdue = today is later than the expected return date. Critical departments sort first.
 - Keep or replace (version 2): suggest write-off when a device has 3 or more repairs, is older than 5 years, or has cost more than half its purchase price in repairs. The numbers are editable, the screen names the rule that fired, and she decides.
@@ -133,6 +149,7 @@ Rules, no hidden magic:
 - File names: YYYY-MM-DD_Type_Company_Inventory.pdf, for example 2026-10-10_Invoice_CompanyX_INV-0402.pdf.
 
 ## 10. Offline and sync
+
 - Every screen works with no internet. Every change is saved on the phone first, added to the waiting list, and marked with an orange dot. When the connection returns, a background job sends the waiting list in order, the server confirms, the dot disappears, and the app downloads other people's changes.
 - Conflicts: for simple fields the newest change wins. For a device status, show the Check this device card with both versions and let her choose. Log every change in history_log.
 - Files: photos and PDFs are saved on the phone first, uploaded in the background with progress and retries, and resume after a break. Wi-Fi only is a setting.
@@ -140,11 +157,13 @@ Rules, no hidden magic:
 - Needs internet: AI answers, Arabic and handwriting reading, backup, other people's changes. Everything else works offline. The first start needs internet once, to log in and download data.
 
 ## 11. Scanner and papers
+
 - Capture with a document-scanner plugin. On Android, Google's ML Kit Document Scanner finds the edges, turns the page upright and can remove shadows and stains on the phone, and it relies on Google Play services. Several pages become ONE PDF; she can add, delete, rotate and reorder pages. Modes after scanning: Clean (white background, dark sharp text, the default), Color (keeps blue stamps and signatures), Original. If the scanner's own clean-up is not enough, add your own step: raise contrast, flatten the background, sharpen the text. Always keep the original photo. If a photo is too dark or blurry, say so kindly and offer Try again.
 - Read the words. On the phone, ML Kit Text Recognition reads French and English print with no internet, but it does NOT read Arabic. On the server when online, OCRmyPDF with Tesseract reads Arabic and weak handwriting and builds the final searchable PDF. Handwriting is best effort; never promise it. Until the words are read, show the tag Mots non lus. Store the text in the database so search works inside papers.
 - Sort and name (the app suggests, she confirms): type (Invoice facture, Contract contrat or marché, Quote devis, Dispatch note bon de sortie, Reception sheet PV de réception, Warranty garantie, Other) from keyword rules in French, Arabic and English first, and the AI model only when the rules are unsure; also company, device (look for inventory numbers like INV-0402), date and amount. The Check before saving screen shows the page and the suggested fields, each labeled Sure or Check this. Never save guesses silently.
 
 ## 12. Hub's brain
+
 - A Supabase Edge Function called hub receives her text, the language, a small app context (current screen, selected device) and the conversation. The AI model may only call these tools: search_devices, list_late_devices, list_devices_at_company, get_device_history, find_paper, get_company_info, draft_reminder_message, draft_monthly_summary, open_screen, start_send_to_company, start_mark_returned, change_setting. The server checks every call against this list. The app runs the calls.
 - Anything that changes data (the start_ tools and change_setting) shows the Confirm card first. Searching, reading and opening screens need no confirmation. Autopilot (moment 11) drives the real screens through the data-hub-id attributes, using the animations that exist.
 - Any answer about her data must come from tool results. Never invent device numbers, dates or amounts.
@@ -154,17 +173,18 @@ Rules, no hidden magic:
 - Privacy and cost: send only the data a question needs. A Settings switch turns the assistant off. Add a rate limit and a monthly spending cap on the Edge Function. Log every action in history_log.
 
 ## 13. Notifications and sounds
+
 Calm and friendly. Musical chimes and short spoken lines, never buzzers: hospital machines already beep, and she must never confuse an app sound with a medical alarm.
 
-| Alert | When | Sound | Spoken line | Repeat |
-| --- | --- | --- | --- | --- |
-| Device late | A company passes the return date | Two soft rising tones | A device is late at Company X | Once a day until handled |
-| Critical place waiting | An Emergency, ICU or Operating Room device is away | Stronger three-note chime | Attention: Emergency is waiting for a device | Up to 3 times, 10 minutes apart, then stop |
-| Due tomorrow | 1 day before the expected return | One soft chime | None | Once |
-| Contract ending | 30 days before the end date | Calm low chime | None | Once |
-| Done | Returned, paper saved, upload finished | Short bright pop plus a light tap | None | Never |
-| Morning briefing | 08:00, changeable | Gentle short melody | Play button reads a short summary | Daily |
-| Sync problem | Uploads keep failing | Quiet low tone | None | Once |
+| Alert                  | When                                               | Sound                             | Spoken line                                  | Repeat                                     |
+| ---------------------- | -------------------------------------------------- | --------------------------------- | -------------------------------------------- | ------------------------------------------ |
+| Device late            | A company passes the return date                   | Two soft rising tones             | A device is late at Company X                | Once a day until handled                   |
+| Critical place waiting | An Emergency, ICU or Operating Room device is away | Stronger three-note chime         | Attention: Emergency is waiting for a device | Up to 3 times, 10 minutes apart, then stop |
+| Due tomorrow           | 1 day before the expected return                   | One soft chime                    | None                                         | Once                                       |
+| Contract ending        | 30 days before the end date                        | Calm low chime                    | None                                         | Once                                       |
+| Done                   | Returned, paper saved, upload finished             | Short bright pop plus a light tap | None                                         | Never                                      |
+| Morning briefing       | 08:00, changeable                                  | Gentle short melody               | Play button reads a short summary            | Daily                                      |
+| Sync problem           | Uploads keep failing                               | Quiet low tone                    | None                                         | Once                                       |
 
 - Schedule reminders ON THE PHONE (local notifications) when a device is sent, so they work offline. Cancel or move them when the status changes.
 - One Android notification channel per alert type, each with its own sound. After a channel is created only its name and description can change, so create a new channel when a sound changes.
@@ -174,13 +194,16 @@ Calm and friendly. Musical chimes and short spoken lines, never buzzers: hospita
 - Haptics match the sound: light tap for success, double tap for warnings, strong tap for critical. Settings: each alert on or off, its sound, volume, vibration, voice lines on or off, and a Test this sound button.
 
 ## 14. Security and privacy
+
 - Log in with email and password the first time, then a PIN or fingerprint to reopen. Auto-lock after a time she picks. Two roles: admin (her) and read-only.
 - Encrypt the phone data if possible and keep keys in secure storage. API keys live on the server only, never in the app.
 - No patient data. Under every free-text field: Do not write patient names.
 - Every cloud and AI feature has an off switch, because the hospital may not allow documents to leave its network.
 
 ## 15. Demo data (fake)
+
 Settings, Demo mode: Load demo data and Reset.
+
 - 6 departments: Emergency, ICU and Operating Room (critical), and Cardiology, Radiology, Administration.
 - 40 devices (PCs, printers, monitors, scanners) with invented inventory and serial numbers, purchase dates between 2016 and 2025, and costs in TND.
 - 3 invented companies (for example Nimbus Service, Zenith Repair, Kora Maintenance) with phone numbers, each with a contract and a deadline (5, 7 and 10 business days).
@@ -189,7 +212,9 @@ Settings, Demo mode: Load demo data and Reset.
 - Dates are relative to today so the demo always looks alive.
 
 ## 16. Phases (stop after each, tell me how to test it, wait for my OK)
+
 In Mode B you build each screen to the section 3 quality bar and run the review loop. In Mode A you wire the existing screens and run the baseline comparison.
+
 - Phase 0, Setup: check tools, SPEC.md and AGENTS.md, git, mode detection. Mode A: audit, design lock, baseline screenshots. Mode B: project scaffold, fonts, tokens, the /design page.
 - Phase 1, Data: the Dexie database, services and hooks, seeded with demo data (in Mode A, exactly the fake data the screens show today, so nothing changes visually).
 - Phase 2, Shell, Open and Today: tab bar, PIN, Today with moments 1, 2, 3 and 8, offline banner state, Hub base character (idle, wave, walk, fly).
@@ -203,6 +228,7 @@ In Mode B you build each screen to the section 3 quality bar and run the review 
 - Phase 10, Finish: light theme and Arabic right-to-left on every screen, the Board view, the thank-you scene (moment 9), the Demo mode, a final design review, and a one-page quick guide for her.
 
 ## 17. Done means
+
 1. Airplane-mode test: offline, send a device, return another, scan a paper and print a dispatch note; online, everything arrives on the server once, with no duplicates.
 2. A person who has never seen the app sends a device in under 30 seconds.
 3. Arabic screens are mirrored and nothing is cut off.
@@ -214,6 +240,7 @@ In Mode B you build each screen to the section 3 quality bar and run the review 
 9. The app installs and runs on a real Android phone.
 
 ## 18. Never do this
+
 - No real hospital data and no patient information.
 - No copying of any existing brand, person, website, logo or imagery.
 - Hub never changes or sends anything without the Confirm card.

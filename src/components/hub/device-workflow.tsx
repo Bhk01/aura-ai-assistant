@@ -22,7 +22,10 @@ import { previewCsv } from "@/logic/csv-import";
 import { formatDate, expectedReturn, isLate } from "@/logic/rules";
 
 function sanitizeFileName(value: string) {
-  return value.replace(/[^a-z0-9-_]+/gi, "-").replace(/-+/g, "-").toLowerCase();
+  return value
+    .replace(/[^a-z0-9-_]+/gi, "-")
+    .replace(/-+/g, "-")
+    .toLowerCase();
 }
 
 type PdfCopy = {
@@ -75,7 +78,12 @@ function getPdfCopy(t: (key: CopyKey) => string): PdfCopy {
   };
 }
 
-async function renderPdfDocument(title: string, lines: string[], signatures: string[], language: string) {
+async function renderPdfDocument(
+  title: string,
+  lines: string[],
+  signatures: string[],
+  language: string,
+) {
   const pdfDoc = await PDFDocument.create();
   const page = pdfDoc.addPage([595, 842]);
   const canvas = document.createElement("canvas");
@@ -181,31 +189,32 @@ export async function generateDevicePdfs(
   kind: "dispatch" | "reception" = "dispatch",
   dispatchDate?: Date,
 ) {
-  const sentDate = device.sentDate ? new Date(device.sentDate) : dispatchDate ?? new Date();
-  const lines = kind === "dispatch"
-    ? [
-        copy.hospital,
-        `${copy.inventory}: ${device.inventory}`,
-        `${copy.serial}: ${device.serial}`,
-        `${copy.brand}: ${device.brand}`,
-        `${copy.type}: ${device.type === "printer" ? copy.typePrinter : device.type === "pc" ? copy.typePc : copy.typeMonitor}`,
-        `${copy.department}: ${departmentOf(device)[language]}`,
-        `${copy.company}: ${company.name}`,
-        `${copy.reason}: ${problem || copy.unspecified}`,
-        `${copy.sentDate}: ${formatDate(sentDate)}`,
-        `${copy.expectedReturnDate}: ${formatDate(expectedReturn(sentDate, company.deadlineDays))}`,
-      ]
-    : [
-        copy.hospital,
-        `${copy.inventory}: ${device.inventory}`,
-        `${copy.serial}: ${device.serial}`,
-        `${copy.brand}: ${device.brand}`,
-        `${copy.type}: ${device.type === "printer" ? copy.typePrinter : device.type === "pc" ? copy.typePc : copy.typeMonitor}`,
-        `${copy.department}: ${departmentOf(device)[language]}`,
-        `${copy.company}: ${company.name}`,
-        `${copy.returnDate}: ${device.returnedDate ? formatDate(new Date(device.returnedDate)) : formatDate(new Date())}`,
-        `${copy.technicianNotes}: ${device.returnedNotes?.trim() || copy.noNotes}`,
-      ];
+  const sentDate = device.sentDate ? new Date(device.sentDate) : (dispatchDate ?? new Date());
+  const lines =
+    kind === "dispatch"
+      ? [
+          copy.hospital,
+          `${copy.inventory}: ${device.inventory}`,
+          `${copy.serial}: ${device.serial}`,
+          `${copy.brand}: ${device.brand}`,
+          `${copy.type}: ${device.type === "printer" ? copy.typePrinter : device.type === "pc" ? copy.typePc : copy.typeMonitor}`,
+          `${copy.department}: ${departmentOf(device)[language]}`,
+          `${copy.company}: ${company.name}`,
+          `${copy.reason}: ${problem || copy.unspecified}`,
+          `${copy.sentDate}: ${formatDate(sentDate)}`,
+          `${copy.expectedReturnDate}: ${formatDate(expectedReturn(sentDate, company.deadlineDays))}`,
+        ]
+      : [
+          copy.hospital,
+          `${copy.inventory}: ${device.inventory}`,
+          `${copy.serial}: ${device.serial}`,
+          `${copy.brand}: ${device.brand}`,
+          `${copy.type}: ${device.type === "printer" ? copy.typePrinter : device.type === "pc" ? copy.typePc : copy.typeMonitor}`,
+          `${copy.department}: ${departmentOf(device)[language]}`,
+          `${copy.company}: ${company.name}`,
+          `${copy.returnDate}: ${device.returnedDate ? formatDate(new Date(device.returnedDate)) : formatDate(new Date())}`,
+          `${copy.technicianNotes}: ${device.returnedNotes?.trim() || copy.noNotes}`,
+        ];
   const title = kind === "dispatch" ? copy.dispatchTitle : copy.receptionTitle;
   await renderPdfDocument(
     title,
@@ -239,7 +248,9 @@ export function ReturnReceiptForm({
       <div className="receipt-heading">
         <div>
           <h3 id="return-receipt-title">{t("receiptTitle")}</h3>
-          <p>{device.inventory} · {device.brand}</p>
+          <p>
+            {device.inventory} · {device.brand}
+          </p>
         </div>
         <Button variant="tool" size="tool" aria-label={t("cancel")} onClick={onCancel}>
           <X aria-hidden="true" />
@@ -265,12 +276,16 @@ export function ReturnReceiptForm({
       </label>
       <small>{t("patientWarning")}</small>
       <div className="receipt-actions">
-        <Button variant="soft" size="touch" onClick={onCancel}>{t("cancel")}</Button>
+        <Button variant="soft" size="touch" onClick={onCancel}>
+          {t("cancel")}
+        </Button>
         <Button
           variant="hub"
           size="touch"
           disabled={!returnedAt}
-          onClick={() => onConfirm(new Date(`${returnedAt}T12:00:00`).toISOString(), technicianNotes.trim())}
+          onClick={() =>
+            onConfirm(new Date(`${returnedAt}T12:00:00`).toISOString(), technicianNotes.trim())
+          }
         >
           <Check aria-hidden="true" />
           {t("saveReceipt")}
@@ -313,12 +328,23 @@ export function DeviceInventoryDialog({
         device.serial.toLowerCase().includes(term) ||
         device.brand.toLowerCase().includes(term) ||
         device.type.toLowerCase().includes(term) ||
-        t(device.type === "printer" ? "typePrinter" : device.type === "pc" ? "typePc" : "typeMonitor").toLowerCase().includes(term) ||
+        t(
+          device.type === "printer"
+            ? "typePrinter"
+            : device.type === "pc"
+              ? "typePc"
+              : "typeMonitor",
+        )
+          .toLowerCase()
+          .includes(term) ||
         departmentOf(device).fr.toLowerCase().includes(term) ||
         departmentOf(device).en.toLowerCase().includes(term) ||
         departmentOf(device).ar.toLowerCase().includes(term) ||
         (device.companyId &&
-          companies.find((company) => company.id === device.companyId)?.name.toLowerCase().includes(term));
+          companies
+            .find((company) => company.id === device.companyId)
+            ?.name.toLowerCase()
+            .includes(term));
       return matchesStatus && matchesText;
     });
   }, [companies, devices, query, statusFilter, t]);
@@ -327,11 +353,13 @@ export function DeviceInventoryDialog({
     if (!cameraStream) return;
     const video = videoRef.current;
     if (!video) return;
-    const Detector = (window as Window & {
-      BarcodeDetector?: new (options?: { formats?: string[] }) => {
-        detect: (source: HTMLVideoElement) => Promise<Array<{ rawValue: string }>>;
-      };
-    }).BarcodeDetector;
+    const Detector = (
+      window as Window & {
+        BarcodeDetector?: new (options?: { formats?: string[] }) => {
+          detect: (source: HTMLVideoElement) => Promise<Array<{ rawValue: string }>>;
+        };
+      }
+    ).BarcodeDetector;
     if (!Detector) {
       setCameraStream(null);
       setScannerMessage(t("scannerUnavailable"));
@@ -351,36 +379,39 @@ export function DeviceInventoryDialog({
     let stopped = false;
     let timer: number | undefined;
     video.srcObject = cameraStream;
-    void video.play().then(async () => {
-      while (!stopped) {
-        try {
-          if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-            const codes = await detector.detect(video);
-            const inventoryCode = codes
-              .map((code) => code.rawValue.trim())
-              .find((value) => /^INV-[A-Z0-9-]+$/i.test(value));
-            if (inventoryCode) {
-              setQuery(inventoryCode.toUpperCase());
-              setScannerMessage(t("scannerFound"));
-              setCameraStream(null);
-              return;
+    void video
+      .play()
+      .then(async () => {
+        while (!stopped) {
+          try {
+            if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+              const codes = await detector.detect(video);
+              const inventoryCode = codes
+                .map((code) => code.rawValue.trim())
+                .find((value) => /^INV-[A-Z0-9-]+$/i.test(value));
+              if (inventoryCode) {
+                setQuery(inventoryCode.toUpperCase());
+                setScannerMessage(t("scannerFound"));
+                setCameraStream(null);
+                return;
+              }
             }
+          } catch {
+            setCameraStream(null);
+            setScannerMessage(t("scannerUnavailable"));
+            searchInputRef.current?.focus();
+            return;
           }
-        } catch {
-          setCameraStream(null);
-          setScannerMessage(t("scannerUnavailable"));
-          searchInputRef.current?.focus();
-          return;
+          await new Promise<void>((resolve) => {
+            timer = window.setTimeout(resolve, 300);
+          });
         }
-        await new Promise<void>((resolve) => {
-          timer = window.setTimeout(resolve, 300);
-        });
-      }
-    }).catch(() => {
-      setCameraStream(null);
-      setScannerMessage(t("scannerUnavailable"));
-      searchInputRef.current?.focus();
-    });
+      })
+      .catch(() => {
+        setCameraStream(null);
+        setScannerMessage(t("scannerUnavailable"));
+        searchInputRef.current?.focus();
+      });
 
     return () => {
       stopped = true;
@@ -392,14 +423,11 @@ export function DeviceInventoryDialog({
 
   async function startCameraScan() {
     setScannerMessage("");
-    const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
+    const isMobile =
+      /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
       (navigator.maxTouchPoints > 1 && window.innerWidth < 1024);
     const Detector = (window as Window & { BarcodeDetector?: unknown }).BarcodeDetector;
-    if (
-      !isMobile ||
-      !navigator.mediaDevices?.getUserMedia ||
-      !Detector
-    ) {
+    if (!isMobile || !navigator.mediaDevices?.getUserMedia || !Detector) {
       setScannerMessage(t("scannerSearchFallback"));
       searchInputRef.current?.focus();
       return;
@@ -422,8 +450,13 @@ export function DeviceInventoryDialog({
     const reader = new FileReader();
     reader.onload = () => {
       const text = String(reader.result ?? "");
-      try { setImportPreview(previewCsv(text, devices)); setImportMessage(''); }
-      catch { setImportMessage(t('csvInvalid')); setImportPreview(null); }
+      try {
+        setImportPreview(previewCsv(text, devices));
+        setImportMessage("");
+      } catch {
+        setImportMessage(t("csvInvalid"));
+        setImportPreview(null);
+      }
     };
     reader.readAsText(file);
     event.target.value = "";
@@ -444,7 +477,12 @@ export function DeviceInventoryDialog({
             placeholder={t("searchPlaceholder")}
           />
         </div>
-        <Button variant="soft" size="tool" aria-label={t("scanBarcode")} onClick={() => void startCameraScan()}>
+        <Button
+          variant="soft"
+          size="tool"
+          aria-label={t("scanBarcode")}
+          onClick={() => void startCameraScan()}
+        >
           <Camera aria-hidden="true" />
         </Button>
         <label className="inventory-import">
@@ -452,7 +490,11 @@ export function DeviceInventoryDialog({
           <span>{t("csvImport")}</span>
         </label>
       </div>
-      {scannerMessage && <div className="dialog-notice" role="status">{scannerMessage}</div>}
+      {scannerMessage && (
+        <div className="dialog-notice" role="status">
+          {scannerMessage}
+        </div>
+      )}
       {cameraStream && (
         <div className="barcode-camera">
           <video ref={videoRef} autoPlay muted playsInline aria-label={t("scannerSearching")} />
@@ -465,7 +507,9 @@ export function DeviceInventoryDialog({
       )}
       <div className="inventory-filters">
         {(["all", "service", "away"] as const).map((filter) => (
-          <Button variant="soft" size="touch"
+          <Button
+            variant="soft"
+            size="touch"
             key={filter}
             type="button"
             className={statusFilter === filter ? "filter-chip active" : "filter-chip"}
@@ -476,9 +520,26 @@ export function DeviceInventoryDialog({
         ))}
       </div>
       {importMessage && <div className="dialog-notice">{importMessage}</div>}
-      {importPreview && <div className="csv-review"><p>{t('csvPreview')}: {importPreview.added} / {importPreview.changed}</p>
-        <Button variant="hub" size="touch" onClick={() => { useStore.getState().importDevices(importPreview.records); setImportPreview(null); }}>{t('confirm')}</Button>
-        <Button variant="soft" size="touch" onClick={() => setImportPreview(null)}>{t('cancel')}</Button></div>}
+      {importPreview && (
+        <div className="csv-review">
+          <p>
+            {t("csvPreview")}: {importPreview.added} / {importPreview.changed}
+          </p>
+          <Button
+            variant="hub"
+            size="touch"
+            onClick={() => {
+              useStore.getState().importDevices(importPreview.records);
+              setImportPreview(null);
+            }}
+          >
+            {t("confirm")}
+          </Button>
+          <Button variant="soft" size="touch" onClick={() => setImportPreview(null)}>
+            {t("cancel")}
+          </Button>
+        </div>
+      )}
       {returnDevice ? (
         <ReturnReceiptForm
           device={returnDevice}
@@ -489,46 +550,64 @@ export function DeviceInventoryDialog({
             onClose();
           }}
         />
-      ) : <div className="inventory-list">
-        {!filtered.length && <p>{t('noResults')}</p>}
-        {filtered.map((device) => {
-          const dept = departmentOf(device);
-          return (
-            <div key={device.id} className="inventory-row">
-              <Button variant="soft" type="button" className="inventory-card" onClick={() => onOpenDevice(device.id)}>
-                <div className="inventory-visual">
-                  {device.type === "printer" ? <Printer aria-hidden="true" /> : <Monitor aria-hidden="true" />}
-                </div>
-                <div className="inventory-copy">
-                  <strong>{device.brand}</strong>
-                  <span>{device.inventory}</span>
-                  <small>{device.serial}</small>
-                </div>
-                <div className="inventory-meta">
-                  <span className={device.status === "away" ? "status critical-status" : "status due"}>
-                    {dept[language]}
-                  </span>
-                  <em>{device.status === "away" ? t("away") : t("inService")}</em>
-                </div>
-              </Button>
-              <div className="inventory-actions">
-                {device.status === "service" && <Button variant="soft" size="touch" onClick={() => onOpenSend(device.id)} data-hub-id="device-send">
-                  <Wrench aria-hidden="true" />
-                  {t("send")}
-                </Button>}
-                {device.status === "away" && <Button
-                  variant="hub"
-                  size="touch"
-                  onClick={() => setReturnDeviceId(device.id)}
+      ) : (
+        <div className="inventory-list">
+          {!filtered.length && <p>{t("noResults")}</p>}
+          {filtered.map((device) => {
+            const dept = departmentOf(device);
+            return (
+              <div key={device.id} className="inventory-row">
+                <Button
+                  variant="soft"
+                  type="button"
+                  className="inventory-card"
+                  onClick={() => onOpenDevice(device.id)}
                 >
-                  <Check aria-hidden="true" />
-                  {t("markReturned")}
-                </Button>}
+                  <div className="inventory-visual">
+                    {device.type === "printer" ? (
+                      <Printer aria-hidden="true" />
+                    ) : (
+                      <Monitor aria-hidden="true" />
+                    )}
+                  </div>
+                  <div className="inventory-copy">
+                    <strong>{device.brand}</strong>
+                    <span>{device.inventory}</span>
+                    <small>{device.serial}</small>
+                  </div>
+                  <div className="inventory-meta">
+                    <span
+                      className={device.status === "away" ? "status critical-status" : "status due"}
+                    >
+                      {dept[language]}
+                    </span>
+                    <em>{device.status === "away" ? t("away") : t("inService")}</em>
+                  </div>
+                </Button>
+                <div className="inventory-actions">
+                  {device.status === "service" && (
+                    <Button
+                      variant="soft"
+                      size="touch"
+                      onClick={() => onOpenSend(device.id)}
+                      data-hub-id="device-send"
+                    >
+                      <Wrench aria-hidden="true" />
+                      {t("send")}
+                    </Button>
+                  )}
+                  {device.status === "away" && (
+                    <Button variant="hub" size="touch" onClick={() => setReturnDeviceId(device.id)}>
+                      <Check aria-hidden="true" />
+                      {t("markReturned")}
+                    </Button>
+                  )}
+                </div>
               </div>
-            </div>
-          );
-        })}
-      </div>}
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -553,8 +632,13 @@ export function DeviceDetailDialog({
   if (!device) return <p className="today-empty">{t("notReady")}</p>;
 
   const currentDevice: Device = device;
-  const company = currentDevice.companyId ? companies.find((item) => item.id === currentDevice.companyId) : undefined;
-  const expected = company && currentDevice.sentDate ? expectedReturn(new Date(currentDevice.sentDate), company.deadlineDays) : null;
+  const company = currentDevice.companyId
+    ? companies.find((item) => item.id === currentDevice.companyId)
+    : undefined;
+  const expected =
+    company && currentDevice.sentDate
+      ? expectedReturn(new Date(currentDevice.sentDate), company.deadlineDays)
+      : null;
   const associatedPapers = papers.filter((paper) => paper.deviceId === currentDevice.id);
 
   async function handlePdf(type: "dispatch" | "reception") {
@@ -577,34 +661,51 @@ export function DeviceDetailDialog({
   return (
     <div className="device-detail-panel">
       <div className="detail-image">
-        {currentDevice.type === "printer" ? <Printer aria-hidden="true" /> : <Monitor aria-hidden="true" />}
+        {currentDevice.type === "printer" ? (
+          <Printer aria-hidden="true" />
+        ) : (
+          <Monitor aria-hidden="true" />
+        )}
       </div>
       <h3>{currentDevice.brand}</h3>
       <span className="status">
         <ShieldAlert aria-hidden="true" />
-        {currentDevice.status === "away" ? t(expected && isLate(expected) ? "late" : "away") : t("inService")}
+        {currentDevice.status === "away"
+          ? t(expected && isLate(expected) ? "late" : "away")
+          : t("inService")}
       </span>
-      {([
-        ["inventory", currentDevice.inventory],
-        ["serial", currentDevice.serial],
-        ["department", departmentOf(currentDevice)[language]],
-        ["company", company?.name ?? "—"],
-        ["expected", expected ? formatDate(expected) : "—"],
-      ] as const).map(([key, value]) => (
+      {(
+        [
+          ["inventory", currentDevice.inventory],
+          ["serial", currentDevice.serial],
+          ["department", departmentOf(currentDevice)[language]],
+          ["company", company?.name ?? "—"],
+          ["expected", expected ? formatDate(expected) : "—"],
+        ] as const
+      ).map(([key, value]) => (
         <div className="detail-row" key={String(key)}>
           <span>{t(key)}</span>
           <strong>{String(value)}</strong>
         </div>
       ))}
       <div className="device-detail-actions">
-        {currentDevice.status === "service" && <Button variant="hub" size="touch" onClick={() => onOpenSend(currentDevice.id)} data-hub-id="device-send">
-          <Wrench aria-hidden="true" />
-          {t("send")}
-        </Button>}
-        {currentDevice.status === "away" && <Button variant="soft" size="touch" onClick={() => setShowReceiptForm(true)}>
-          <Check aria-hidden="true" />
-          {t("markReturned")}
-        </Button>}
+        {currentDevice.status === "service" && (
+          <Button
+            variant="hub"
+            size="touch"
+            onClick={() => onOpenSend(currentDevice.id)}
+            data-hub-id="device-send"
+          >
+            <Wrench aria-hidden="true" />
+            {t("send")}
+          </Button>
+        )}
+        {currentDevice.status === "away" && (
+          <Button variant="soft" size="touch" onClick={() => setShowReceiptForm(true)}>
+            <Check aria-hidden="true" />
+            {t("markReturned")}
+          </Button>
+        )}
       </div>
       {showReceiptForm && (
         <ReturnReceiptForm
@@ -616,14 +717,30 @@ export function DeviceDetailDialog({
           }}
         />
       )}
-      {documentError && <p className="pin-error" role="alert">{documentError}</p>}
+      {documentError && (
+        <p className="pin-error" role="alert">
+          {documentError}
+        </p>
+      )}
       <p className="dialog-notice">{t("pdfDraft")}</p>
       <div className="pdf-stack">
-        <Button variant="soft" size="touch" disabled={!company} onClick={() => void handlePdf("dispatch")} data-hub-id="paper-docs">
+        <Button
+          variant="soft"
+          size="touch"
+          disabled={!company}
+          onClick={() => void handlePdf("dispatch")}
+          data-hub-id="paper-docs"
+        >
           <FileDown aria-hidden="true" />
           {t("dispatch")}
         </Button>
-        <Button variant="soft" size="touch" disabled={!company || !currentDevice.returnedDate} onClick={() => void handlePdf("reception")} data-hub-id="paper-docs">
+        <Button
+          variant="soft"
+          size="touch"
+          disabled={!company || !currentDevice.returnedDate}
+          onClick={() => void handlePdf("reception")}
+          data-hub-id="paper-docs"
+        >
           <FileText aria-hidden="true" />
           {t("reception")}
         </Button>
@@ -725,7 +842,8 @@ export function DeviceSendDialog({
       {step === 1 && (
         <div className="vendor-list">
           {companies.map((company) => (
-            <Button variant="soft"
+            <Button
+              variant="soft"
               key={company.id}
               type="button"
               className={selectedCompanyId === company.id ? "vendor-card active" : "vendor-card"}
@@ -735,8 +853,16 @@ export function DeviceSendDialog({
               }}
             >
               <strong>{company.name}</strong>
-              <span>{company.deadlineDays} {t("dayUnit")}</span>
-              <small>{company.contract === "warranty" ? t("warranty") : company.contract === "contract" ? t("contract") : t("noContract")}</small>
+              <span>
+                {company.deadlineDays} {t("dayUnit")}
+              </span>
+              <small>
+                {company.contract === "warranty"
+                  ? t("warranty")
+                  : company.contract === "contract"
+                    ? t("contract")
+                    : t("noContract")}
+              </small>
             </Button>
           ))}
         </div>
@@ -756,10 +882,24 @@ export function DeviceSendDialog({
               rows={6}
             />
           </label>
-          <small className="text-muted-foreground">{t('patientWarning')}</small>
-          <div className="detail-row"><span>{t('expected')}</span><strong>{formatDate(expectedReturn(new Date(), companies.find(c => c.id === selectedCompanyId)?.deadlineDays ?? 0))}</strong></div>
-          <p className="dialog-notice">{t('pdfDraft')}</p>
-          {actionError && <p className="pin-error" role="alert">{actionError}</p>}
+          <small className="text-muted-foreground">{t("patientWarning")}</small>
+          <div className="detail-row">
+            <span>{t("expected")}</span>
+            <strong>
+              {formatDate(
+                expectedReturn(
+                  new Date(),
+                  companies.find((c) => c.id === selectedCompanyId)?.deadlineDays ?? 0,
+                ),
+              )}
+            </strong>
+          </div>
+          <p className="dialog-notice">{t("pdfDraft")}</p>
+          {actionError && (
+            <p className="pin-error" role="alert">
+              {actionError}
+            </p>
+          )}
           <div className="device-detail-actions">
             <Button variant="soft" size="touch" onClick={() => setStep(1)}>
               {t("back")}
@@ -768,7 +908,14 @@ export function DeviceSendDialog({
               <FileText aria-hidden="true" />
               {t("saveOnly")}
             </Button>
-            <Button variant="soft" size="touch" disabled={saving} onClick={() => void confirmSend(true)}>{t("savePrint")}</Button>
+            <Button
+              variant="soft"
+              size="touch"
+              disabled={saving}
+              onClick={() => void confirmSend(true)}
+            >
+              {t("savePrint")}
+            </Button>
           </div>
         </>
       )}

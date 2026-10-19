@@ -13,7 +13,9 @@ it("hides device data behind the configured PIN immediately on startup", async (
 
   render(<DesignPreview />);
 
-  expect(await screen.findByRole("dialog", { name: "Votre espace est verrouillé" })).toBeInTheDocument();
+  expect(
+    await screen.findByRole("dialog", { name: "Votre espace est verrouillé" }),
+  ).toBeInTheDocument();
   expect(screen.queryByText("INV-0402")).not.toBeInTheDocument();
   expect(screen.queryByRole("navigation")).not.toBeInTheDocument();
 });

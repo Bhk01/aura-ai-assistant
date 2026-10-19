@@ -12,4 +12,4 @@
 - [ ] Phase 9: account, Supabase sync and multi-device recovery.
 - [ ] Phase 10: final device review, accessibility pass and user guide.
 - [x] Final polish code review: typed CSV rows, dispatch/reception workflow, startup privacy gate, Hub patient-data boundary and regression coverage.
-- [ ] Final visual handoff: archive dark/light French/Arabic screenshots and verify camera behavior on a physical mobile device.
+- [x] Final visual handoff: French/Arabic dark/light screenshots archived in docs/reviews; camera behavior still needs a physical mobile device.
