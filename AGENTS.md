@@ -1,4 +1,5 @@
 <!-- LOVABLE:BEGIN -->
+
 > [!IMPORTANT]
 > This project is connected to [Lovable](https://lovable.dev). Avoid rewriting
 > published git history — force pushing, or rebasing/amending/squashing commits
@@ -7,9 +8,11 @@
 >
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
+
 <!-- LOVABLE:END -->
 
 ## S-IT Hub
+
 - Read SPEC.md at the start of every phase; it is the complete user brief. Pause after each phase for approval.
 - This is Mode B: original design, no locked Figma export. Mode A restrictions in SPEC.md apply only if a locked export is later supplied; never run stateful Git commands.
 - Preserve TanStack Start routing and use leaf route metadata; framework replacement is not supported.

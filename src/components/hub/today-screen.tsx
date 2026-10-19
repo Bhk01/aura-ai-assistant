@@ -427,7 +427,12 @@ export function TodayScreen({
       </main>
       {returnDevice && (
         <div className="modal-backdrop receipt-backdrop">
-          <section className="modal" role="dialog" aria-modal="true" aria-labelledby="return-receipt-title">
+          <section
+            className="modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="return-receipt-title"
+          >
             <ReturnReceiptForm
               device={returnDevice}
               onCancel={() => setReturnDeviceId(null)}
