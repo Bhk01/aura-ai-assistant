@@ -19,9 +19,13 @@
 - Production build: `npm run build` passed.
 - Non-formatting ESLint rules passed on changed files. The normal lint command still reports repository Prettier formatting errors; it was not used to reformat unrelated existing code.
 
+### Pass 3 — language and theme visual handoff (2026-10-19)
+
+- Captured French and Arabic home screens in both dark and light themes at 390 × 844, including the PIN setup and unlock flow: `home-fr-dark.png`, `home-fr-light.png`, `home-ar-dark.png`, `home-ar-light.png` in this folder.
+- Verified the light theme keeps the OKLCH token contrast and the Arabic layout mirrors correctly (RTL text, nav order, hero alignment).
+- Zero console or page errors during all four captures.
+- Repository Prettier formatting fixed on all project source files; auto-generated backend integration files are intentionally left untouched.
+
 ## Not yet verified
 
-- Arabic and light-theme screenshots were not captured and reviewed in this pass.
 - The camera scanner fallback was implemented, but the integrated browser had no physical camera; permission and barcode detection need an Android/iOS device check.
-- The screenshot service wrote captures in its isolated browser environment, so PNGs could not be archived in this repository during this review.
-- Run the visual checklist and archive before/after screenshots before calling the final visual handoff complete.
