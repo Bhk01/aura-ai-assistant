@@ -29,3 +29,8 @@
 ## Not yet verified
 
 - The camera scanner fallback was implemented, but the integrated browser had no physical camera; permission and barcode detection need an Android/iOS device check.
+
+### Pass 4 — full revisit (2026-10-20)
+
+- Walked welcome → PIN setup → every bottom-nav screen at 390 × 844 and 1280 × 900 with motion enabled; zero console or page errors; 23 tests pass.
+- Fixed: desktop Inventory rows were crushed into a narrow column (now stacked like on phones); page content now clears the floating bottom bar.
