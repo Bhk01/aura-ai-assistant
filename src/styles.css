@@ -2320,3 +2320,25 @@ h3,
 @keyframes wave { 0%,100% { transform: scaleY(.3); } 50% { transform: scaleY(1); } }
 @keyframes bubble-in { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .assistant-bubble, .assistant-ring, .assistant-dots i, .assistant-wave i { animation: none; } }
+
+/* Inventory rows live in a narrow dialog at every size: always stack the card above its actions. */
+.inventory-row {
+  flex-direction: column;
+  align-items: stretch;
+}
+.inventory-card {
+  min-width: 0;
+}
+.inventory-actions {
+  flex-direction: row;
+}
+.inventory-actions button {
+  flex: 1;
+}
+.inventory-toolbar {
+  flex-wrap: wrap;
+}
+/* Keep the last content clear of the floating bottom bar. */
+.hub-app main {
+  padding-bottom: 140px;
+}
